@@ -1,0 +1,48 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+BOOL	queue.h	/^typedef unsigned char BOOL;$/;"	t
+FALSE	queue.h	15;"	d
+LQueue	queue_1.c	/^struct LQueue$/;"	s	file:
+MAX_L_SIZE	queue_1.c	114;"	d	file:
+MAX_SIZE	queue_1.c	7;"	d	file:
+PQUEUE	queue.h	/^}QUEUE, *PQUEUE;$/;"	t	typeref:struct:queue
+QUEUE	queue.h	/^}QUEUE, *PQUEUE;$/;"	t	typeref:struct:queue
+QUEUE_H	queue.h	2;"	d
+TRUE	queue.h	11;"	d
+arrQueue	queue_1.c	/^struct arrQueue                             \/\/ 声明队列的头和尾节点，数据存储元素$/;"	s	file:
+check	queue.h	27;"	d
+createQueue	queue.c	/^void createQueue(PQUEUE Q, int maxsize)$/;"	f
+data	queue_1.c	/^    unsigned char       data[MAX_SIZE+1];   \/\/ 定义数组队列元素，能容纳MAX_SIZE字节$/;"	m	struct:arrQueue	file:
+data	queue_1.c	/^    unsigned int data[MAX_L_SIZE];$/;"	m	struct:LQueue	file:
+deLQueue	queue_1.c	/^void deLQueue(unsigned int *len)    \/\/ 返回一个长度len数值，len为0则队列为空$/;"	f
+deQueue	queue.c	/^BOOL deQueue(PQUEUE Q, int *data)$/;"	f
+deQueue	queue_1.c	/^void deQueue(unsigned char *pElement, unsigned int *len)\/\/向queue中取出长度为len字节数据，len返回长度实际取出的长度$/;"	f
+dtu_buffer_add_data	queue_1.c	/^unsigned char dtu_buffer_add_data(const unsigned char *pbuf, unsigned int len)$/;"	f
+dtu_buffer_get_data	queue_1.c	/^unsigned char dtu_buffer_get_data(unsigned char* pbuf, unsigned int* len)$/;"	f
+emptyQueue	queue.c	/^BOOL emptyQueue(PQUEUE Q)$/;"	f
+enLQueue	queue_1.c	/^void enLQueue(unsigned int *len)    \/\/ 插入长度len, len不能为0，插入正确len不改变，插入错误len为0$/;"	f
+enQueue	queue.c	/^BOOL enQueue(PQUEUE Q, int data)$/;"	f
+enQueue	queue_1.c	/^void enQueue(unsigned char *pElement, unsigned int *len)\/\/向queue中存入长度为len字节数据，len返回长度实际存入的长度$/;"	f
+front	queue.h	/^	int front,rear;$/;"	m	struct:queue
+front	queue_1.c	/^    unsigned int        front;              \/\/ 含有数据的第一个下标$/;"	m	struct:arrQueue	file:
+front	queue_1.c	/^    unsigned int front;$/;"	m	struct:LQueue	file:
+fullQueue	queue.c	/^BOOL fullQueue( PQUEUE Q)$/;"	f
+initLQueue	queue_1.c	/^void initLQueue()$/;"	f
+initQueue	queue_1.c	/^void initQueue()$/;"	f
+lenLQueue	queue_1.c	/^unsigned int lenLQueue()            \/\/ 获取队列存入多少len数值$/;"	f
+lenQueue	queue_1.c	/^unsigned int lenQueue()     \/\/ 队列存了多少数据$/;"	f
+lqueue	queue_1.c	/^}lqueue;$/;"	v	typeref:struct:LQueue
+main	queue.c	/^int main(int argc, char *argv[])$/;"	f
+main	queue_1.c	/^void main()$/;"	f
+maxsize	queue.h	/^	int maxsize;$/;"	m	struct:queue
+pBase	queue.h	/^	int *pBase;$/;"	m	struct:queue
+printQueue	queue.c	/^void printQueue(PQUEUE Q)$/;"	f
+queue	queue.h	/^typedef struct queue$/;"	s
+queue	queue_1.c	/^}queue;$/;"	v	typeref:struct:arrQueue
+rear	queue.h	/^	int front,rear;$/;"	m	struct:queue
+rear	queue_1.c	/^    unsigned int        rear;               \/\/ 含有数据的最后一个元素下标，rear所在的元素不存数据$/;"	m	struct:arrQueue	file:
+rear	queue_1.c	/^    unsigned int rear;$/;"	m	struct:LQueue	file:

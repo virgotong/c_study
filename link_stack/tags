@@ -1,0 +1,46 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+BOOL	link_stack.h	/^typedef unsigned char BOOL;$/;"	t
+FALSE	link_stack.h	15;"	d
+LINK_STACK_H	link_stack.h	2;"	d
+LinkStack	link_stack.h	/^}LinkStack, *pLinkStack;$/;"	t	typeref:struct:__anon1
+OPSET	link_stack.c	/^char OPSET[8]={'+','-','*','\/','(',')','#','^'};$/;"	v
+Operate	link_stack.c	/^float Operate(float a, unsigned char theta, float b)$/;"	f
+Prior	link_stack.c	/^unsigned char Prior[8][8] =  $/;"	v
+ReturnOP	link_stack.c	/^BOOL ReturnOP(char op1, char *op2)$/;"	f
+SC	link_stack.h	/^}SC;$/;"	t	typeref:struct:StackChar
+SF	link_stack.h	/^}SF;$/;"	t	typeref:struct:StackFloat
+StackChar	link_stack.h	/^typedef struct StackChar$/;"	s
+StackFloat	link_stack.h	/^typedef struct StackFloat$/;"	s
+StackNode	link_stack.h	/^typedef struct StackNode$/;"	s
+StackNode	link_stack.h	/^}StackNode, *pStackNode;$/;"	t	typeref:struct:StackNode
+TRUE	link_stack.h	11;"	d
+c	link_stack.h	/^    char c;$/;"	m	struct:StackChar
+count	link_stack.h	/^    int count;    $/;"	m	struct:__anon1
+destroyStack	link_stack.c	/^BOOL destroyStack(pLinkStack S)$/;"	f
+element	link_stack.h	/^    int element;$/;"	m	struct:StackNode
+evaluateExpression	link_stack.c	/^float evaluateExpression(char *expression)$/;"	f
+f	link_stack.h	/^    float f;$/;"	m	struct:StackFloat
+findIn	link_stack.c	/^BOOL findIn( char op1, char *op2)$/;"	f
+getOP	link_stack.c	/^char getOP(char op1, char op2)$/;"	f
+getTop	link_stack.c	/^BOOL getTop(pLinkStack S, int *val)$/;"	f
+initStack	link_stack.c	/^BOOL initStack(pLinkStack S)$/;"	f
+isEmptyStack	link_stack.c	/^BOOL isEmptyStack(pLinkStack S)$/;"	f
+main	link_stack.c	/^int main(int argc, char *argv[])$/;"	f
+next	link_stack.h	/^    struct StackChar *next;$/;"	m	struct:StackChar	typeref:struct:StackChar::StackChar
+next	link_stack.h	/^    struct StackFloat *next;$/;"	m	struct:StackFloat	typeref:struct:StackFloat::StackFloat
+next	link_stack.h	/^    struct StackNode *next; $/;"	m	struct:StackNode	typeref:struct:StackNode::StackNode
+pLinkStack	link_stack.h	/^}LinkStack, *pLinkStack;$/;"	t	typeref:struct:__anon1
+pStackNode	link_stack.h	/^}StackNode, *pStackNode;$/;"	t	typeref:struct:StackNode
+popStack	link_stack.c	/^BOOL popStack(pLinkStack S , int *val)$/;"	f
+printStack	link_stack.c	/^BOOL printStack(pLinkStack S)$/;"	f
+pushStack	link_stack.c	/^BOOL pushStack(pLinkStack S, int val)$/;"	f
+sc_pop	link_stack.c	/^SC *sc_pop(SC *s)$/;"	f
+sc_push	link_stack.c	/^SC *sc_push(SC *s, char c)$/;"	f
+sf_pop	link_stack.c	/^SF *sf_pop(SF *s)$/;"	f
+sf_push	link_stack.c	/^SF *sf_push(SF *s, float f)$/;"	f
+top	link_stack.h	/^    pStackNode top;$/;"	m	struct:__anon1

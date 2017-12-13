@@ -1,0 +1,51 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+HeaderPtr	ip2region.h	/^	uint_t *HeaderPtr;		\/\/header ptr blocks$/;"	m	struct:__anon1
+HeaderSip	ip2region.h	/^	uint_t *HeaderSip;		\/\/header start ip blocks$/;"	m	struct:__anon1
+INDEX_BLOCK_LENGTH	ip2region.h	45;"	d
+IP2R_API	ip2region.h	22;"	d
+IP2R_API	ip2region.h	25;"	d
+IP2R_CALLOC	ip2region.h	36;"	d
+IP2R_FREE	ip2region.h	38;"	d
+IP2R_MALLOC	ip2region.h	37;"	d
+OS_LINUX	ip2region.h	18;"	d
+OS_WINDOW	ip2region.h	16;"	d
+TOTAL_HEADER_LENGTH	ip2region.h	48;"	d
+_IP2REGION_H	ip2region.h	8;"	d
+city_id	ip2region.h	/^	uint_t city_id;$/;"	m	struct:__anon2
+datablock_entry	ip2region.h	/^} datablock_entry;$/;"	t	typeref:struct:__anon2
+datablock_t	ip2region.h	/^typedef datablock_entry * datablock_t;$/;"	t
+dbBinStr	ip2region.h	/^    char *dbBinStr;         \/\/db binary string for memory search mode$/;"	m	struct:__anon1
+dbFile	ip2region.h	/^    char *dbFile;           \/\/path of db file$/;"	m	struct:__anon1
+dbHandler	ip2region.h	/^	FILE *dbHandler;		\/\/file handler$/;"	m	struct:__anon1
+firstIndexPtr	ip2region.h	/^	uint_t firstIndexPtr;	\/\/first index ptr$/;"	m	struct:__anon1
+getLine	testSearcher.c	/^static char *getLine( FILE *fp, char *__dst ) $/;"	f	file:
+getTime	testSearcher.c	/^static double getTime()$/;"	f	file:
+getUnsignedInt	ip2region.c	/^IP2R_API uint_t getUnsignedInt(char *buffer, int offset)$/;"	f
+headerLen	ip2region.h	/^	uint_t headerLen;		\/\/header block number$/;"	m	struct:__anon1
+ip2long	ip2region.c	/^IP2R_API uint_t ip2long(char *ip)$/;"	f
+ip2region_binary_search	ip2region.c	/^IP2R_API uint_t ip2region_binary_search(ip2region_t ip2rObj, uint_t ip, datablock_t datablock)$/;"	f
+ip2region_binary_search_string	ip2region.c	/^IP2R_API uint_t ip2region_binary_search_string(ip2region_t ip2rObj, char *ip, datablock_t datablock)$/;"	f
+ip2region_btree_search	ip2region.c	/^IP2R_API uint_t ip2region_btree_search(ip2region_t ip2rObj, uint_t ip, datablock_t datablock)$/;"	f
+ip2region_btree_search_string	ip2region.c	/^IP2R_API uint_t ip2region_btree_search_string(ip2region_t ip2rObj, char *ip, datablock_t datablock)$/;"	f
+ip2region_create	ip2region.c	/^IP2R_API uint_t ip2region_create(ip2region_t ip2rObj, char *dbFile)$/;"	f
+ip2region_destroy	ip2region.c	/^IP2R_API uint_t ip2region_destroy(ip2region_t ip2rObj)$/;"	f
+ip2region_entry	ip2region.h	/^} ip2region_entry;$/;"	t	typeref:struct:__anon1
+ip2region_memory_search	ip2region.c	/^IP2R_API uint_t ip2region_memory_search(ip2region_t ip2rObj, uint_t ip, datablock_t datablock) $/;"	f
+ip2region_memory_search_string	ip2region.c	/^IP2R_API uint_t ip2region_memory_search_string(ip2region_t ip2rObj, char *ip, datablock_t datablock)$/;"	f
+ip2region_t	ip2region.h	/^typedef ip2region_entry * ip2region_t;$/;"	t
+lastIndexPtr	ip2region.h	/^	uint_t lastIndexPtr;	\/\/last index ptr$/;"	m	struct:__anon1
+long2ip	ip2region.c	/^IP2R_API uint_t long2ip(uint_t ip, char *buffer)$/;"	f
+main	testSearcher.c	/^int main( int argc, char **argv )$/;"	f
+print	ip2region.h	28;"	d
+println	ip2region.h	29;"	d
+region	ip2region.h	/^	char region[256];$/;"	m	struct:__anon2
+totalBlocks	ip2region.h	/^	uint_t totalBlocks;		\/\/total index blocks number$/;"	m	struct:__anon1
+uchar_t	ip2region.h	/^typedef unsigned char uchar_t;$/;"	t
+uint_t	ip2region.h	/^typedef unsigned int uint_t;$/;"	t
+ulong_t	ip2region.h	/^typedef unsigned long ulong_t;$/;"	t
+ushort_t	ip2region.h	/^typedef unsigned short ushort_t;$/;"	t
