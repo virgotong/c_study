@@ -30,7 +30,7 @@ static inline char *lu_to_a( unsigned long long data )
 
 int main(int argc, char *argv[])
 {
-	int i;	
+	/*int i;	
 	//srand((unsigned)time(NULL));
 	for(i = 0; i < 20; i++)
 	{
@@ -43,8 +43,8 @@ int main(int argc, char *argv[])
 	
 
 	int rval = 1;
-	check_rval(rval,"test");
-	get_char();
+	//check_rval(rval,"test");*/
+	printf("pid: %d  uid: %d, gid: %d\n", getpid(), getuid(), getgid());
 	return 0;
 }
 
