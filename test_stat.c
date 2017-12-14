@@ -4,12 +4,28 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#define IN 0x0001
+#define OUT 0X0002
 
 int main(int argc, char *argv[])
 {
 	int i;
-	struct stat buf;
-	char *ptr = NULL;
+	int count;
+	int flag = atoi(argv[1]);
+	for(i = 0, count = 0; i < 10; i++)
+	{
+		if(flag == 0) continue;		
+		else if((flag & IN) && (flag & OUT));
+		else if((flag & IN) && !(flag & OUT)) continue;		
+		count++;
+	}
+	printf("%d\n", count);
+
+
+
+	// int i;
+	// struct stat buf;
+	// char *ptr = NULL;
 
 	// if(argc != 2)
 	// {
@@ -24,7 +40,7 @@ int main(int argc, char *argv[])
 	// {
 	// 	printf("Read access OK!\n");
 	// }
-	for(i = 0; i < argc; i++)
+	/*for(i = 0; i < argc; i++)
 	{
 		printf("%s: ", argv[i]);
 		if(lstat(argv[i], &buf) < 0)
@@ -70,7 +86,7 @@ int main(int argc, char *argv[])
 		printf("%s\n", ptr);
 
 		printf("st_size: %d\n", (int)buf.st_size);		
-	}
+	}*/
 
 	return 0;
 }
