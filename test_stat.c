@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 int main(int argc, char *argv[])
 {
@@ -10,7 +11,20 @@ int main(int argc, char *argv[])
 	struct stat buf;
 	char *ptr = NULL;
 
-	for(i = 0; i < argc; i++)
+	if(argc != 2)
+	{
+		printf("usage: a.out <pathname>\n");
+		exit(EXIT_FAILURE);
+	}
+	if(access(argv[1], R_OK) < 0)
+	{
+		printf("access error for: %s\n", argv[1]);
+	}
+	else
+	{
+		printf("Read access OK!\n");
+	}
+	/*for(i = 0; i < argc; i++)
 	{
 		printf("%s: ", argv[i]);
 		if(lstat(argv[i], &buf) < 0)
@@ -53,8 +67,10 @@ int main(int argc, char *argv[])
 		{
 			ptr = "unknown mode";
 		}
-		printf("%s\n", ptr);		
-	}
+		printf("%s\n", ptr);
+
+		printf("blksize: %d\n", (int)buf.st_blksize);		
+	}*/
 
 	return 0;
 }
