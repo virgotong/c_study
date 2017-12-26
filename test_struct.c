@@ -15,6 +15,8 @@ int print_person(test *ptr)
 
 int main()
 {
+	test a;
+	printf("%d", sizeof(a));
 	test person[10];
 	int i;	
 	for(i = 0; i < 10; i++)

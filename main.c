@@ -9,7 +9,10 @@ int main( int argc, char *argv[])
 	test_funcb();
 	test_arrsize();	*/
 
-	test_list(argc, argv);
+	printf("%d\n", argc);
+	printf("%c\n", argv[1][0]);
+	//test_list(argc, argv);
+
 
 	return 0;
 }
