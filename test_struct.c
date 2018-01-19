@@ -10,11 +10,11 @@ typedef struct
 	char address[20];
 }test, *ptest;
 
-int print_person(test ptr)
+int print_person(test *ptr)
 {
-	printf("name: %c\n", ptr.name);
-	printf("age: %d\n", ptr.age);
-	printf("address: %s\n", ptr.address);
+	printf("name: %c\n", ptr->name);
+	printf("age: %d\n", ptr->age);
+	printf("address: %s\n", ptr->address);
 	return 0;
 }
 
@@ -24,10 +24,10 @@ int test_struct( int argc, char *argv[])
 	{	
 		.name = 'a',
 		.age = 10,
-		.address = "172.18.10.1",
+		.address = "abcdef"
 	};
 
-	print_person( default_test );
+	print_person( &default_test );
 
 	return 0;	
 }
