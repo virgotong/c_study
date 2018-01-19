@@ -6,29 +6,29 @@ typedef struct
 {
 	char name;
 	int age;
+	//char *address;
+	char address[20];
 }test, *ptest;
 
-int print_person(test *ptr)
+int print_person(test ptr)
 {
+	printf("name: %c\n", ptr.name);
+	printf("age: %d\n", ptr.age);
+	printf("address: %s\n", ptr.address);
 	return 0;
 }
 
-int main()
+int test_struct( int argc, char *argv[])
 {
-	test a;
-	printf("%d", sizeof(a));
-	test person[10];
-	int i;	
-	for(i = 0; i < 10; i++)
-	{
-		person[i].name = 's';
-		person[i].age = i+1;
-	}
+	test default_test = 
+	{	
+		.name = 'a',
+		.age = 10,
+		.address = "172.18.10.1",
+	};
 
-	int size = (int)(sizeof(person) / sizeof(person[0]));
-	printf("size: %d\n", size);
+	print_person( default_test );
 
-	print_person(person);
 	return 0;	
 }
 
