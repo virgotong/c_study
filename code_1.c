@@ -89,11 +89,31 @@ int main( int argc, char *argv[] )
 	// init_str( &buf );
 
 	// printf("buf: %s\n", buf);
-	printf("*****Start Main Process*****\n");
-	printf( "main_pid: %d\n", getpid( ) );
-	init_daemonize( );
-	printf("*****End Main Process*****\n");
-	printf("\n");
+	// printf("*****Start Main Process*****\n");
+	// printf( "main_pid: %d\n", getpid( ) );
+	// init_daemonize( );
+	// printf("*****End Main Process*****\n");
+	// printf("\n");
+
+	/* test setsid() */
+	if( fork( ) > 0 )
+	{
+		printf("Parent process is start!\n");
+
+		sleep( 10 );
+
+		printf("Parent process is exit\n");
+
+		exit( 0 );
+	}
+
+	setsid( );
+
+	printf("Child process is start!\n");
+
+	sleep( 100 );
+
+	printf("Child process is exit!\n");
 
 	return 0;
 }
