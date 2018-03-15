@@ -3,7 +3,7 @@
 #include <stdlib.h>  
 #include <stdio.h>  
 #include <string.h> 
-#include <time.h> 
+#include <time.h>
 
 #include "code.h"
 
@@ -148,7 +148,7 @@ void test_void_ptr( void *ptr, int len, int type )
 	{
 		case TYPE1:
 		{
-				test1 *data_1 = ( test1 *)ptr;
+			test1 *data_1 = ( test1 *)ptr;
 			for( i = 0; i < len; i++ )
 			{
 				printf("age: %d name: %s\n", data_1[i].age, data_1[i].name);
@@ -299,6 +299,63 @@ void init_rate_data( int len )
 	}
 }
 
+test1* get_data( test1 *data, int len )
+{
+	int i;
+	test1 *DATA = data;
+	
+	if( !DATA && !( DATA = malloc( ( len ) * sizeof( test1 ) ) ) )
+	{
+		printf("error!\n");
+	}
+
+	for( i = 0; i < len; i++ )
+	{
+		ZERO_DATA( DATA[ i ] );
+
+		DATA[ i ].name = "test1";
+		DATA[ i ].age = i + 10;
+	}
+
+	return DATA;
+}
+
+int test_step( int len )
+{
+	
+	int process_cnt = 10;
+	int step;
+	int remainder;	
+
+	if( ( len % process_cnt ) == 0 )
+	{
+		step = len / process_cnt;
+		printf("每组: %d\n", step);
+	}
+	else
+	{
+		step = len / process_cnt;
+		remainder = len % process_cnt;
+		printf("step: %d last: %d + %d\n", step, step, remainder );
+	}
+
+	return 0;
+}
+
+int test_access( const char *file_name )
+{
+	if( access( file_name, F_OK ) == 0 )
+	{
+		printf("文件存在！\n");
+	}
+	else
+	{
+		printf("文件不存在！\n");
+	}
+
+	return 0;
+}
+
 int main( int argc, char *argv[] )
 {
 	// test_dup( );
@@ -312,8 +369,19 @@ int main( int argc, char *argv[] )
 
 	// init_data( 10, TYPE2 );
 
-	init_rate_data( 25 );
-	sleep(10);
+	 // init_rate_data( 5 );
+	 // sleep(10);
+
+	// test1 *data = NULL;
+	// data = get_data( data, 10 );
+	// test_void_ptr( data, 10, TYPE1 );
+	// int len = atoi( argv[1] );
+	// test_step( len );
+
+	const char *file_name = "/tmp/test.txt";
+	 test_access( file_name );
+
+
 	return 0;
 }
 
