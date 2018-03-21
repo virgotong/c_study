@@ -356,6 +356,48 @@ int test_access( const char *file_name )
 	return 0;
 }
 
+int is_non_symbol( char c )
+{
+	if( c == '\0')	return 1;
+
+	int c_int = (int)c;
+    int symbol = (c_int >= 48 && c_int <= 57) || (c_int >= 65 && c_int <= 90) || (c_int >= 97 && c_int <= 122);
+    return symbol;
+}
+
+char *url_encode(const char *input)
+{
+    int end = strlen(input);
+    size_t final_size = (end * 3) + 1;
+    char *working = malloc(final_size * sizeof(char)),*output = working;
+
+    while(*input)
+    {
+        const char c = *input;
+        if(c < 0)
+        {
+            input++;
+        }
+        else if( is_non_symbol( c ) ) 
+        {            
+            *working++ = *input++;
+        }
+        else
+        {
+            char encoded[4] = {0};
+            snprintf(encoded, 4, "%%%02x", c);
+
+            *working++ = encoded[0];
+            *working++ = encoded[1];
+            *working++ = encoded[2];
+            input++;
+        }
+    }
+
+    *working = 0; //null term
+    return output;
+}
+
 int main( int argc, char *argv[] )
 {
 	// test_dup( );
@@ -378,8 +420,18 @@ int main( int argc, char *argv[] )
 	// int len = atoi( argv[1] );
 	// test_step( len );
 
-	const char *file_name = "/tmp/test.txt";
-	 test_access( file_name );
+	// const char *file_name = "/tmp/test.txt";
+	// test_access( file_name );
+
+	char *url = "bIdJYi##XFBXDzK85vTe4";
+	char *encodeUrl = url_encode( url );
+
+	printf("encodeUrl: %s\n", encodeUrl);
+
+	if( encodeUrl )
+	{
+		free( encodeUrl );
+	}
 
 
 	return 0;
