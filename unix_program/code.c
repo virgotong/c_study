@@ -423,15 +423,17 @@ int main( int argc, char *argv[] )
 	// const char *file_name = "/tmp/test.txt";
 	// test_access( file_name );
 
-	char *url = "bIdJYi##XFBXDzK85vTe4";
-	char *encodeUrl = url_encode( url );
+	// char *url = "bIdJYi##XFBXDzK85vTe4";
+	// char *encodeUrl = url_encode( url );
 
-	printf("encodeUrl: %s\n", encodeUrl);
+	// printf("encodeUrl: %s\n", encodeUrl);
 
-	if( encodeUrl )
-	{
-		free( encodeUrl );
-	}
+	// if( encodeUrl )
+	// {
+	// 	free( encodeUrl );
+	// }
+
+
 
 
 	return 0;

@@ -3,3 +3,6 @@ code:	code.o
 
 code.o: code.c code.h
 	gcc -Wall -c code.c 
+
+clean:
+	rm code code.o
