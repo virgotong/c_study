@@ -5,4 +5,6 @@ code.o: code.c code.h
 	gcc -Wall -c code.c 
 
 clean:
-	rm code code.o
+	rm -f *.o
+	rm -f *.d
+	rm -f code

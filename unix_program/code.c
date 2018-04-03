@@ -7,6 +7,8 @@
 
 #include "code.h"
 
+#define DEBUG
+
 #define TYPE1	0X0001
 #define TYPE2	0X0002
 
@@ -23,6 +25,23 @@ typedef struct
 	int num;
 	char *type;
 }test2;
+
+typedef struct 
+{
+	char name[256];
+	int age;
+	int score;
+	int height;
+} stu1;
+
+
+typedef struct 
+{
+	char name[256];
+	int age;
+	int score;
+	int height;
+} stu2;
 
 typedef struct 
 {
@@ -398,6 +417,22 @@ char *url_encode(const char *input)
     return output;
 }
 
+void test_struct( void *data, int len )
+{
+
+	int i = 0;	
+	stu1 *data_1 = ( stu1 *)data;
+
+	while( i < len )
+	{
+		printf("name: %s age: %d score: %d\n", data_1->name, data_1->age, data_1->score);
+		data_1++;
+		i++;
+	}
+
+	return;
+}	
+
 int main( int argc, char *argv[] )
 {
 	// test_dup( );
@@ -432,6 +467,36 @@ int main( int argc, char *argv[] )
 	// {
 	// 	free( encodeUrl );
 	// }
+
+	// #ifdef DEBUG
+	// 	printf("debug!\n");
+	// #else
+	// 	printf("no debug!\n");
+
+	// #endif
+
+	int i;
+	int len = 10;
+	stu2 *data_2 = NULL;
+	if( !data_2 && !( data_2 = malloc( ( len) * sizeof( stu2 ) ) ) )
+	{
+		printf("Create data_2 array failed!\n");
+	}
+
+	for( i = 0; i < len; i++ )
+	{
+		strcpy( data_2[ i ].name, "data_2");
+		data_2[ i ].age = i + 10;
+		data_2[ i ].score = i + 20;
+		data_2[ i ].height = i + 30;
+	}
+
+	test_struct( data_2, len );
+
+	if( data_2 )
+	{
+		free( data_2 );
+	}
 
 
 
