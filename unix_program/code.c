@@ -431,7 +431,55 @@ void test_struct( void *data, int len )
 	}
 
 	return;
-}	
+}
+
+int base64_encode( unsigned char *buf, int len, char *outbuf, int outsize )
+{
+	int i, outlen;
+	unsigned char c1, c2, c3;
+	static const unsigned char base64_encode_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+	if( ( len + 2 ) * 8 / 6  >= outsize )		
+		len = ( outsize -1 ) * 6 / 8;
+
+	printf("len: %d\n", len);
+	for( i = 0, outlen = 0; i <= len - 3; i += 3 )
+	{
+		c1 = buf[ i ];
+		c2 = buf[ i + 1 ];
+		c3 = buf[ i + 2 ];
+
+		outbuf[ outlen ++ ] = base64_encode_chars[ c1 >> 2 ];
+		outbuf[ outlen ++ ] = base64_encode_chars[ ( ( c1 & 0x3 ) << 4 ) | ( ( c2 & 0xf0 ) >> 4 ) ];
+		outbuf[ outlen ++ ] = base64_encode_chars[ ( ( c2 & 0xf ) << 2 ) | ( ( c3 & 0xc0 ) >> 6 ) ];
+		outbuf[ outlen ++ ] = base64_encode_chars[ c3 & 0x3f ];
+	}
+
+	printf("i: %d\n", i);
+	if( i < len )
+	{
+		c1 = buf[ i ++ ];
+		if( i < len )
+		{
+			c2 = buf[ i ++ ];
+			outbuf[ outlen ++ ] = base64_encode_chars[ c1 >> 2 ];
+			outbuf[ outlen ++ ] = base64_encode_chars[ ( ( c1 & 0x3 ) << 4 ) | ( ( c2 & 0xf0 ) >> 4 ) ];
+			outbuf[ outlen ++ ] = base64_encode_chars[ ( ( c2 & 0xf ) << 2 ) ];
+			outbuf[ outlen ++ ] = '=';
+		}
+		else
+		{
+			outbuf[ outlen ++ ] = base64_encode_chars[ c1 >> 2 ];
+			outbuf[ outlen ++ ] = base64_encode_chars[ ( ( c1 & 0x3 ) << 4 ) ];
+			outbuf[ outlen ++ ] = '=';
+			outbuf[ outlen ++ ] = '=';
+		}
+	}
+
+	outbuf[ outlen ] = 0;
+	return outlen;
+	
+}
 
 int main( int argc, char *argv[] )
 {
@@ -475,29 +523,33 @@ int main( int argc, char *argv[] )
 
 	// #endif
 
-	int i;
-	int len = 10;
-	stu2 *data_2 = NULL;
-	if( !data_2 && !( data_2 = malloc( ( len) * sizeof( stu2 ) ) ) )
-	{
-		printf("Create data_2 array failed!\n");
-	}
+	// int i;
+	// int len = 10;
+	// stu2 *data_2 = NULL;
+	// if( !data_2 && !( data_2 = malloc( ( len) * sizeof( stu2 ) ) ) )
+	// {
+	// 	printf("Create data_2 array failed!\n");
+	// }
 
-	for( i = 0; i < len; i++ )
-	{
-		strcpy( data_2[ i ].name, "data_2");
-		data_2[ i ].age = i + 10;
-		data_2[ i ].score = i + 20;
-		data_2[ i ].height = i + 30;
-	}
+	// for( i = 0; i < len; i++ )
+	// {
+	// 	strcpy( data_2[ i ].name, "data_2");
+	// 	data_2[ i ].age = i + 10;
+	// 	data_2[ i ].score = i + 20;
+	// 	data_2[ i ].height = i + 30;
+	// }
 
-	test_struct( data_2, len );
+	// test_struct( data_2, len );
 
-	if( data_2 )
-	{
-		free( data_2 );
-	}
+	// if( data_2 )
+	// {
+	// 	free( data_2 );
+	// }
 
+	const char *buf = "php1";
+	char sbuf[4096];
+	int encode_len = base64_encode( (unsigned char *)buf, strlen( buf ), sbuf, sizeof( sbuf ) );
+	printf("sbuf: %s encode_len: %d\n", sbuf, encode_len);
 
 
 
