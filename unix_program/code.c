@@ -4,6 +4,7 @@
 #include <stdio.h>  
 #include <string.h> 
 #include <time.h>
+#include <sys/wait.h>
 
 #include "code.h"
 
@@ -12,7 +13,56 @@
 #define TYPE1	0X0001
 #define TYPE2	0X0002
 
+typedef unsigned int								UINT, *PUINT;
+typedef unsigned char								BYTE, *PBYTE;
+
+
 #define ZERO_DATA( x )		memset( &( x ), 0, sizeof( x ) )
+
+
+typedef struct _LIST_ENTRY
+{
+	struct _LIST_ENTRY *Flink;
+	struct _LIST_ENTRY *Blink;
+
+} LIST_ENTRY, *PLIST_ENTRY;
+
+#define LIST_ENTRY_INIT( h )						{ &( h ), &( h ) }
+
+
+static inline void RemoveEntryList( PLIST_ENTRY Entry )
+{
+	PLIST_ENTRY Blink;
+	PLIST_ENTRY Flink;
+
+	Flink = Entry->Flink;
+	Blink = Entry->Blink;
+	Blink->Flink = Flink;
+	Flink->Blink = Blink;
+}
+
+static inline void InsertTailList( PLIST_ENTRY ListHead, PLIST_ENTRY Entry )
+{
+	PLIST_ENTRY Blink;
+
+	Blink = ListHead->Blink;
+	Entry->Flink = ListHead;
+	Entry->Blink = Blink;
+	Blink->Flink = Entry;
+	ListHead->Blink = Entry;
+}
+
+typedef struct 
+{
+	LIST_ENTRY entry;
+	int input_bps;
+	int output_bps;
+} flowdata;
+
+static LIST_ENTRY 	G_flowdata_list = LIST_ENTRY_INIT( G_flowdata_list );
+
+#define FIELD_OFFSET( type, field )					( ( UINT )( UINT )&( ( ( type * )0 )->field ) )
+#define GET_LIST_OBJECT( pe, type, member )			( ( type * )( ( PBYTE )( pe ) - FIELD_OFFSET( type, member ) ) )
 
 typedef struct 
 {
@@ -481,6 +531,98 @@ int base64_encode( unsigned char *buf, int len, char *outbuf, int outsize )
 	
 }
 
+
+void test_pipe( void )
+{
+	int fd[2];
+    char buf[256];
+    int cid;
+   
+    if( pipe(fd)<0 )
+    {
+            perror("failed to pipe");
+            exit(1);
+    }
+    
+    cid = fork( );
+    if( cid == 0 )
+    {
+    	close( fd[1] );       
+        while( 1 )
+        {
+        	printf("This is child pid %d read from pipe at %ld\n", getpid( ), time( NULL ));
+        	int num = read( fd[0], buf, sizeof( buf ) );
+        	printf("child read result is %s %d %d\n", buf, strlen( buf ), num );	
+        }
+        
+    }
+
+    for( ; ; sleep( 10 ) )
+    {
+    	char *sbuf = "test";
+    	close(fd[0]);
+    	int i;
+    	for( i = 0; i < 5; i++ )
+    	{
+    		write( fd[1], sbuf, strlen( sbuf ) );
+    		sleep(1);    		  	
+    	}
+    	
+    }
+    
+}
+
+
+//test list
+void init_list( void )
+{
+	int i;
+	for( i = 0; i < 10; i++ )
+	{
+		flowdata data, *pdata;
+
+		ZERO_DATA( data );
+		data.input_bps = 100 + i;
+		data.output_bps = 1000 + i;
+
+		pdata = ( flowdata *)malloc( sizeof( *pdata ) );
+		*pdata = data;
+
+		InsertTailList( &G_flowdata_list, &pdata->entry );
+	}
+
+	return;
+}
+
+void print_list( void )
+{
+	PLIST_ENTRY pe;
+	flowdata *pdata;
+
+	for( pe = G_flowdata_list.Flink; pe != &G_flowdata_list; )
+	{
+		pdata = GET_LIST_OBJECT( pe, flowdata, entry );
+		pe = pe->Flink;
+
+		printf( "input_bps: %d output_bps: %d\n", pdata->input_bps, pdata->output_bps );
+
+		RemoveEntryList( &pdata->entry );
+		free( pdata );
+	}
+
+	return;
+}
+
+
+/* 测试终端结构体termios */
+void test_terminal( void )
+{
+	struct winsize win = {0,0,0,0};
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &win );
+	if( !win.)
+
+}
+
 int main( int argc, char *argv[] )
 {
 	// test_dup( );
@@ -523,35 +665,54 @@ int main( int argc, char *argv[] )
 
 	// #endif
 
-	// int i;
-	// int len = 10;
-	// stu2 *data_2 = NULL;
-	// if( !data_2 && !( data_2 = malloc( ( len) * sizeof( stu2 ) ) ) )
-	// {
-	// 	printf("Create data_2 array failed!\n");
-	// }
+	int i;
+	int len = 10;
+	stu2 *data_2 = NULL;
+	if( !data_2 && !( data_2 = malloc( ( len) * sizeof( stu2 ) ) ) )
+	{
+		printf("Create data_2 array failed!\n");
+	}
 
-	// for( i = 0; i < len; i++ )
-	// {
-	// 	strcpy( data_2[ i ].name, "data_2");
-	// 	data_2[ i ].age = i + 10;
-	// 	data_2[ i ].score = i + 20;
-	// 	data_2[ i ].height = i + 30;
-	// }
+	for( i = 0; i < len; i++ )
+	{
+		strcpy( data_2[ i ].name, "data_2");
+		data_2[ i ].age = i + 10;
+		data_2[ i ].score = i + 20;
+		data_2[ i ].height = i + 30;
+	}
 
-	// test_struct( data_2, len );
+	printf("--pid--: %d\n", getpid());
+	sleep( 10 );
 
-	// if( data_2 )
-	// {
-	// 	free( data_2 );
-	// }
-
-	const char *buf = "php1";
-	char sbuf[4096];
-	int encode_len = base64_encode( (unsigned char *)buf, strlen( buf ), sbuf, sizeof( sbuf ) );
-	printf("sbuf: %s encode_len: %d\n", sbuf, encode_len);
+	int cid;
+	cid = fork( );
+	if( cid == 0 )
+	{
+		test_struct( data_2, len );
+		printf("pid: %d\n", getpid( ));
+	}
 
 
+	//test_struct( data_2, len );
+
+	if( data_2 )
+	{				
+		free( data_2 );
+	}
+
+	// const char *buf = "php1";
+	// char sbuf[4096];
+	// int encode_len = base64_encode( (unsigned char *)buf, strlen( buf ), sbuf, sizeof( sbuf ) );
+	// printf("sbuf: %s encode_len: %d\n", sbuf, encode_len);
+
+	
+	//test_pipe( );
+
+	// init_list( );
+	// print_list( );
+
+
+	
 
 	return 0;
 }
