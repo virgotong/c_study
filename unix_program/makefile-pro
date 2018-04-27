@@ -1,0 +1,14 @@
+ifeq ($(object_type),code)
+ code: code.o
+	gcc -Wall code.o -o code -g
+ code.o: code.c code.h
+	gcc -Wall -c code.c 
+endif
+
+ifeq ($(object_type),hash)
+ hash: hash.o
+	gcc -Wall hash.o -o hash -g
+ hash.o:	hash.c hash.h
+	gcc -Wall -c hash.c
+endif
+

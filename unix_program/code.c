@@ -614,14 +614,6 @@ void print_list( void )
 }
 
 
-/* 测试终端结构体termios */
-void test_terminal( void )
-{
-	struct winsize win = {0,0,0,0};
-	ioctl(STDOUT_FILENO, TIOCGWINSZ, &win );
-	if( !win.)
-
-}
 
 int main( int argc, char *argv[] )
 {
