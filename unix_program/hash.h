@@ -24,6 +24,16 @@ typedef struct
 	lz_hash_object *	hash_table[ HASH_TABLE_SIZE ];
 } hash_map;
 
+typedef struct
+{
+	char language_name[4096];
+	char charset_encoding[4096];
+
+	hash_map 	text_map;
+} LanguagePacket, PSLanguagePacket;
+
+PSLanguagePacket G_language;
+
 unsigned long hmap_hash_string( const void *key, int key_size );
 int hmap_compare_string( const void *key1, int key1_size, const void *key2, int key2_size );
 
@@ -31,7 +41,12 @@ void init_hash_map( hash_map *map, HASH_FUNC hash_func, HASH_COMPARE hash_compar
 void hash_map_free( hash_map *map );
 
 int hash_map_find( hash_map *map, const void *key, int key_size, void **data_buffer, int *data_size );
-int hash_map_insert( hash_map *map, const void *key, int key_size, void **data_buffer, int *data_size );
+int hash_map_insert( hash_map *map, const void *key, int key_size, const void *data_buffer, int data_size);
 int hash_map_remove( hash_map *map, const void *key, int key_size );
+
+void load_language_map( const char *name )
+{
+	
+}
 
 #endif
