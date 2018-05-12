@@ -1,4 +1,4 @@
-OBJECTS := code hash
+OBJECTS := code hash msgsend msgrecive
 
 .PHONY : all
 
@@ -15,4 +15,4 @@ all:
 clean :
 	rm -f *.o
 	rm -f *.d
-	rm -f code hash
+	rm -f code hash msgrecive msgsend

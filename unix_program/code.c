@@ -5,6 +5,7 @@
 #include <string.h> 
 #include <time.h>
 #include <sys/wait.h>
+#include <stdarg.h>
 
 #include "code.h"
 
@@ -613,7 +614,279 @@ void print_list( void )
 	return;
 }
 
+void common_update_file( void )
+{
+	int cid;
+	cid = fork( );
+	if( cid == 0 )
+	{
+		char *fname = "black_list.txt";
+		struct stat stdata;
+		struct tm *accesstime;
+		struct tm *modifytime;
+		struct tm *changetime;
 
+		if( ( stat( fname, &stdata ) == 0 ) && ( stdata.st_size > 0 ) )
+		{
+			accesstime = localtime( &( stdata.st_atime ) );
+			modifytime = localtime( &( stdata.st_mtime ) );
+			changetime = localtime( &( stdata.st_ctime ) );
+
+			printf("accesstime: %d::%d::%d\n", accesstime->tm_hour, accesstime->tm_min, accesstime->tm_sec);
+			printf("modifytime: %d::%d::%d\n", modifytime->tm_hour, modifytime->tm_min, modifytime->tm_sec);
+			printf("changetime: %d::%d::%d\n", changetime->tm_hour, changetime->tm_min, changetime->tm_sec);
+		}
+		else
+		{
+			printf("File not exists!\n");
+		}	
+	}
+}
+
+void wait_childs( void )
+{
+	pid_t	pid;
+	int		stat;
+
+	while( ( pid = waitpid( -1, &stat, WNOHANG ) ) > 0 );
+}
+
+typedef const char *	PCSTR;
+
+static inline int my_is_digit( int c )
+{
+	return	( c >= '0' && c <= '9' );
+}
+
+void print_safe_page_string( char *fmt, char *str )
+{
+	char			*bufptr, *pos, *trans;
+	int				bufsize, outpos, len;
+	static char	buffer[4096];
+
+	// first, use static buffer
+	bufptr = buffer;
+	bufsize = sizeof( buffer );
+
+	for( ; ; )
+	{
+		// check the string for special html characters
+		for( outpos = 0, pos = str; *pos; pos ++ )
+		{
+			trans = NULL;
+			if( ( BYTE )*pos < 0x20 )
+			{
+				if( *pos != '\r' &&
+					*pos != '\n' &&
+					*pos != '\t' )
+					trans = ".";
+			}
+			else if( *pos == '<' )
+				trans = "&lt;";
+			else if( *pos == '>' )
+				trans = "&gt;";
+			else if( *pos == '&' )
+				trans = "&amp;";
+			else if( *pos == '\"' )
+				trans = "&quot;";
+			else if( *pos == '\'' )
+				trans = "&apos;";
+
+			if( trans )
+			{
+				// need to transform the character to html notations
+				len = strlen( trans );
+				if( outpos + len >= bufsize )break;
+				memcpy( bufptr + outpos, trans, len );
+				outpos += len;
+			}
+			else
+			{
+				// default copy
+				if( outpos + 1 >= bufsize )break;
+				bufptr[ outpos ++ ] = *pos;
+			}
+		}
+
+		if( ! *pos )break;
+		if( bufptr != buffer )free( bufptr );
+		bufsize += strlen( pos ) * 8;	// make big enough
+		bufptr = ( char * )malloc( bufsize );
+		if( ! bufptr )return;
+	}
+
+	// finally, output the transformed string
+	bufptr[ outpos ] = 0;
+	printf( fmt, bufptr );
+	if( bufptr != buffer )free( bufptr );
+}
+
+void my_vprintf( const char *fmt, va_list args )
+{
+	int		len, offset = 1;
+	PCSTR	pos, last = fmt;
+	char	newfmt[4096];
+	va_list	lastargs;
+	va_copy( lastargs, args );
+
+	for( pos = fmt; *pos; )
+		if( *pos == '%' )
+		{
+			offset = 1;
+
+			// strip flags ...
+			switch( pos[ offset ] )
+			{
+				case '-' :
+				case '+' :
+				case ' ' :
+				case '#' :
+				case '0' :
+
+					offset ++;
+					break;
+			}
+
+			// strip field width
+			if( pos[ offset ] == '*' )
+				va_arg( args, int );
+			else
+				while( my_is_digit( pos[ offset ] ) )offset ++;
+
+			// strip precision ...
+			if( pos[ offset ] == '.' )
+			{
+				offset ++;
+				while( my_is_digit( pos[ offset ] ) )offset ++;
+			}
+
+			// strip the qualifier
+			switch( pos[ offset ] )
+			{
+				case 'h' :
+				case 'l' :
+
+					if( pos[ offset ] == pos[ offset + 1 ] )offset ++;
+					offset ++;
+					break;
+
+				case 'L' :
+			    case 'Z' :
+			    case 'z' :
+			    case 't' :
+
+					offset ++;
+					break;
+			}
+
+			// get the final type
+			switch( pos[ offset ++ ] )
+			{				
+				case 'd' :
+				case 'i' :
+
+					// int agrument
+					va_arg( args, int );
+					break;
+
+				case 'o' :
+				case 'u' :
+				case 'x' :
+				case 'X' :
+
+					// unsigned int argument					
+					printf("...\n");
+					va_arg( args, unsigned int );
+					break;
+
+				case 'f' :
+				case 'F' :
+
+					// float argument
+					va_arg( args, double );	// promote 'float' to 'double'
+					break;
+
+				case 'a' :
+				case 'A' :
+				case 'e' :
+				case 'E' :
+				case 'g' :
+				case 'G' :
+
+					// double argument
+					va_arg( args, double );
+					break;
+
+				case 'p' :
+
+					// pointer argument
+					va_arg( args, void * );
+					break;
+
+				case 'c' :
+
+					// char argument
+					va_arg( args, int );	// promote 'char' to 'int'
+					break;
+
+				case 'S' :
+
+					// format output previous arguments
+					len = ( int )( pos + offset - last );
+					memcpy( newfmt, last, len );
+					newfmt[ len - 1 ] = 's';
+					newfmt[ len ] = 0;
+					vprintf( newfmt, lastargs );
+					va_arg( args, char * );
+
+					last = pos + offset;
+					va_copy( lastargs, args );
+					break;
+
+				case 's' :
+
+					// string argument
+					// this is what we interest in
+
+					// format output previous arguments
+					printf("string go here!\n");				
+					len = ( int )( pos - last );
+					memcpy( newfmt, last, len );
+					newfmt[ len ] = 0;
+					vprintf( newfmt, lastargs );
+
+					// VERIFY and output current string
+					memcpy( newfmt, pos, offset );
+					newfmt[ offset ] = 0;
+					print_safe_page_string( newfmt, va_arg( args, char * ) );
+
+					last = pos + offset;
+					va_copy( lastargs, args );
+					break;
+			}
+
+			pos += offset;
+		}
+		else pos ++;
+
+	// format output the remaining arguments	
+	if( *last )vprintf( last, lastargs );
+
+	//debug code add by dongsixing
+	FILE *fp;
+	const char *file = "/var/log/print.debug";
+	fp = fopen( file, "a" );	
+	if( *last ) vfprintf( fp, last, lastargs );
+	fclose( fp );
+}
+
+void print_data_fotmat( const char *format, ... )
+{
+	va_list 	args;
+	va_start( args, format );
+	my_vprintf( format, args );
+	va_end( args );
+}
 
 int main( int argc, char *argv[] )
 {
@@ -657,40 +930,40 @@ int main( int argc, char *argv[] )
 
 	// #endif
 
-	int i;
-	int len = 10;
-	stu2 *data_2 = NULL;
-	if( !data_2 && !( data_2 = malloc( ( len) * sizeof( stu2 ) ) ) )
-	{
-		printf("Create data_2 array failed!\n");
-	}
+	// int i;
+	// int len = 10;
+	// stu2 *data_2 = NULL;
+	// if( !data_2 && !( data_2 = malloc( ( len) * sizeof( stu2 ) ) ) )
+	// {
+	// 	printf("Create data_2 array failed!\n");
+	// }
 
-	for( i = 0; i < len; i++ )
-	{
-		strcpy( data_2[ i ].name, "data_2");
-		data_2[ i ].age = i + 10;
-		data_2[ i ].score = i + 20;
-		data_2[ i ].height = i + 30;
-	}
+	// for( i = 0; i < len; i++ )
+	// {
+	// 	strcpy( data_2[ i ].name, "data_2");
+	// 	data_2[ i ].age = i + 10;
+	// 	data_2[ i ].score = i + 20;
+	// 	data_2[ i ].height = i + 30;
+	// }
 
-	printf("--pid--: %d\n", getpid());
-	sleep( 10 );
+	// printf("--pid--: %d\n", getpid());
+	// sleep( 10 );
 
-	int cid;
-	cid = fork( );
-	if( cid == 0 )
-	{
-		test_struct( data_2, len );
-		printf("pid: %d\n", getpid( ));
-	}
+	// int cid;
+	// cid = fork( );
+	// if( cid == 0 )
+	// {
+	// 	test_struct( data_2, len );
+	// 	printf("pid: %d\n", getpid( ));
+	// }
 
 
 	//test_struct( data_2, len );
 
-	if( data_2 )
-	{				
-		free( data_2 );
-	}
+	// if( data_2 )
+	// {				
+	// 	free( data_2 );
+	// }
 
 	// const char *buf = "php1";
 	// char sbuf[4096];
@@ -702,6 +975,18 @@ int main( int argc, char *argv[] )
 
 	// init_list( );
 	// print_list( );
+
+
+	//common_update_file( );
+
+	//test print data order by fotmat
+	
+	unsigned int a = 123;
+
+	print_data_fotmat( "%u", a );
+	print_data_fotmat( "%lu", 456 );
+	print_data_fotmat( "%s", "ajcasjc");
+	
 
 
 	

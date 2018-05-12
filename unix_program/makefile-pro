@@ -12,3 +12,19 @@ ifeq ($(object_type),hash)
 	gcc -Wall -c hash.c
 endif
 
+ifeq ($(object_type),msgsend)
+ msgsend: msgsnd.o
+	gcc -Wall msgsnd.o -o msgsend -g
+ msgsnd.o: msgsnd.c
+	gcc -Wall -c msgsnd.c
+endif
+
+ifeq ($(object_type),msgrecive)
+ msgrecive: msgrcv.o
+	gcc -Wall msgrcv.o -o msgrecive -g
+ msgrcv.o: msgrcv.c
+	gcc -Wall -c msgrcv.c
+endif
+
+
+
