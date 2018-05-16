@@ -26,5 +26,11 @@ ifeq ($(object_type),msgrecive)
 	gcc -Wall -c msgrcv.c
 endif
 
+ifeq ($(object_type),unix)
+ unix: unix.o
+	gcc -Wall unix.o -o unix -g
+ unix.o: unix.c
+	gcc -Wall -c unix.c
+endif
 
 

@@ -1,4 +1,5 @@
-OBJECTS := code hash msgsend msgrecive
+#OBJECTS := code hash msgsend msgrecive unix
+OBJECTS := unix
 
 .PHONY : all
 
@@ -15,4 +16,4 @@ all:
 clean :
 	rm -f *.o
 	rm -f *.d
-	rm -f code hash msgrecive msgsend
+	rm -f code hash msgrecive msgsend unix
