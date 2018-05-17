@@ -1,13 +1,14 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <signal.h>
-#include <execinfo.h>
-#include <pwd.h>
-#include <shadow.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <string.h>
+// #include <unistd.h>
+// #include <signal.h>
+// #include <execinfo.h>
+// #include <pwd.h>
+// #include <shadow.h>
+// #include <sys/time.h>
 
-#define MAX_TRACE_SIZE	32
+#include "common.h"
 
 static inline int my_locase( char c )
 {
@@ -153,12 +154,263 @@ int get_param( int argc, char *argv[] )
 	return 0;
 }
 
+static inline int get_socket_option( int sk, int level, int name )
+{
+	int			val = -1;
+	socklen_t	val_len = sizeof( val );
+
+	// if the 'sk' does not support getting the option, treat as 'succeed'
+	return getsockopt( sk, level, name, &val, &val_len ) >= 0 ? val : 0;
+}
+
+int my_wait_write( int fd, int timeout )
+{
+	int				result;
+	fd_set			fds;
+	struct timeval	start_tv, tv;
+
+	FD_ZERO( &fds );
+	FD_SET( fd, &fds );
+
+	tv.tv_sec	= timeout / 1000;
+	tv.tv_usec	= ( timeout % 1000 ) * 1000;
+
+	gettimeofday( &start_tv, NULL );
+	result = select( fd + 1, NULL, &fds, NULL, &tv );
+
+	// result == 0, select timed out; result < 0, error in select
+	if( result <= 0 )return result;
+
+	// the 'select' may result positive if the connection gets some error, and the 'getsockopt'
+	// with 'SO_ERROR' option name would tell the actual error code. so verify it after select
+	result = get_socket_option( fd, SOL_SOCKET, SO_ERROR );
+	if( result )return -result;
+
+	// result > 0, something can be write, return the time left
+	gettimeofday( &tv, NULL );
+	tv.tv_sec -= start_tv.tv_sec;
+	if( tv.tv_usec < start_tv.tv_usec )
+		tv.tv_sec --, tv.tv_usec += USECS_PER_SECOND;
+	tv.tv_usec -= start_tv.tv_usec;
+
+	timeout -= tv.tv_sec * 1000 + tv.tv_usec / 1000;
+	if( timeout <= 0 )timeout = 1;	// keep the result positive
+
+	return timeout;
+}
+
+int my_wait_read( int fd, int timeout )
+{
+	int				result;
+	fd_set			fds;
+	struct timeval	start_tv, tv;
+
+	// from linux.die.net : On Linux, select() modifies timeout to reflect the amount
+	// of time not slept; most other implementations do not do this. (POSIX.1-2001 permits
+	// either behavior.) This causes problems both when Linux code which reads timeout is
+	// ported to other operating systems, and when code is ported to Linux that reuses a
+	// struct timeval for multiple select()s in a loop without reinitializing it. Consider
+	// timeout to be undefined after select() returns.
+
+	// the tilera system ports the glibc and it uses 'pselect' to simulate 'select', it
+	// does not update the timeout value. so use the following implementation to work around
+
+	FD_ZERO( &fds );
+	FD_SET( fd, &fds );
+
+	tv.tv_sec	= timeout / 1000;
+	tv.tv_usec	= ( timeout % 1000 ) * 1000;
+
+	gettimeofday( &start_tv, NULL );
+	result = select( fd + 1, &fds, NULL, NULL, &tv );
+
+	// result == 0, select timed out; result < 0, error in select
+	if( result <= 0 )return result;
+
+	// the 'select' may result positive if the connection gets some error, and the 'getsockopt'
+	// with 'SO_ERROR' option name would tell the actual error code. so verify it after select
+//	result = get_socket_option( fd, SOL_SOCKET, SO_ERROR );
+//	if( result )return -result;
+
+	// result > 0, something can be read, return the time left
+	gettimeofday( &tv, NULL );
+	tv.tv_sec -= start_tv.tv_sec;
+	if( tv.tv_usec < start_tv.tv_usec )
+		tv.tv_sec --, tv.tv_usec += USECS_PER_SECOND;
+	tv.tv_usec -= start_tv.tv_usec;
+
+	timeout -= tv.tv_sec * 1000 + tv.tv_usec / 1000;
+	if( timeout <= 0 )timeout = 1;	// keep the result positive
+
+	return timeout;
+}
+
+int shell_output( PBYTE *outbuf, int *outlen, PBYTE inbuf, int inlen, const char *path, ... )
+{
+	#define REALLOC_STEP	0x1000
+	#define WRITE_STEP		0x1000
+	#define READ_STEP		0x100
+
+	int	result = -1, cid;
+	int	ifds[ 2 ] = { -1, -1 }, ofds[ 2 ] = { -1, -1 };
+
+	// some cgi server do not set this, and we need it to
+	// execute the tools. note the 'overwrite' is '0'
+	setenv( "PATH", "/bin:/sbin:/usr/bin:/usr/sbin", 0 );
+	// must flush the cached data. otherwise the output before
+	// the fork would be flushed by both parent and the child
+	fflush( NULL );
+
+	if( outbuf )*outbuf = NULL;
+	if( outlen )*outlen = 0;
+
+	if( pipe( ifds ) >= 0 &&
+		pipe( ofds ) >= 0 )
+	{
+		cid = fork( );
+		if( cid == 0 )
+		{
+			// close the useless end of the pipe
+			close( ifds[ 1 ] );
+			close( ofds[ 0 ] );
+
+			if( dup2( ifds[ 0 ], STDIN_FILENO ) >= 0 &&
+				dup2( ofds[ 1 ], STDOUT_FILENO ) >= 0 &&
+				dup2( ofds[ 1 ], STDERR_FILENO ) >= 0 )
+			{
+				va_list	ap;
+				int		argc;
+				PCSTR	argv[ MAX_EXECUTE_ARGS_SIZE ];
+
+				// duplicated done, decrease the reference of the pipe descriptors
+				close( ifds[ 0 ] );
+				close( ofds[ 1 ] );
+
+				// parse and generate the argument list
+				va_start( ap, path );
+
+				argv[ 0 ] = path;
+				for( argc = 1; argc < MAX_EXECUTE_ARGS_SIZE - 1; argc ++ )
+				{
+					argv[ argc ] = va_arg( ap, PCSTR );
+					if( ! argv[ argc ] )break;
+				}
+
+				argv[ argc ] = NULL;
+				va_end( ap );
+
+				// execute the command
+				result = execvp( path, ( char * const * )argv );
+			}
+
+			// if failed
+			close( ifds[ 0 ] );
+			close( ofds[ 1 ] );
+			exit( result );
+		}
+		else if( cid > 0 )
+		{
+			int		res, tsize, buffer_size = 0, buffer_pos = 0;
+			PBYTE	buffer = NULL;
+
+			// close the useless end of the pipe
+			close( ifds[ 0 ] );
+			close( ofds[ 1 ] );
+
+			while( TRUE )
+			{
+				// write data to the child
+				if( inbuf && inlen > 0 )
+				{
+					res = my_wait_write( ifds[ 1 ], 0 );
+					if( res < 0 )break;
+					if( res > 0 )
+					{
+						tsize = inlen;
+						if( tsize > WRITE_STEP )tsize = WRITE_STEP;
+						if( write( ifds[ 1 ], inbuf, tsize ) != tsize )break;
+						inlen -= tsize;
+						inbuf += tsize;
+					}
+				}
+				else
+				{
+					// tell the child that no more data
+					if( ifds[ 1 ] > 0 )
+					{
+						close( ifds[ 1 ] );
+						ifds[ 1 ] = -1;
+					}
+				}
+
+				res = my_wait_read( ofds[ 0 ], 0 );
+				if( res < 0 )break;
+				if( res > 0 )
+				{
+					// try to read data from the child
+					if( buffer_pos + READ_STEP > buffer_size )
+					{
+						PBYTE buffer2 = realloc( buffer, buffer_size + REALLOC_STEP );
+						if( ! buffer2 )break;	// no more memory available
+
+						buffer = buffer2;
+						buffer_size += REALLOC_STEP;
+					}
+
+					tsize = read( ofds[ 0 ], buffer + buffer_pos, READ_STEP );
+					if( tsize <= 0 )
+					{
+						// end of data, set ending of the string
+						buffer[ buffer_pos ] = 0;
+						break;
+					}
+
+					// succeed reading, move on to next block
+					buffer_pos += tsize;
+				}
+			}
+
+			// cleanup if failed
+			close( ofds[ 0 ] );
+			if( waitpid( cid, &result, 0 ) < 0 )result = -1;
+			if( outbuf )
+				*outbuf = buffer;
+			else if( buffer )
+				free( buffer );
+			if( outlen )*outlen = buffer_pos;
+		}
+	}
+
+	return result;
+
+	#undef REALLOC_STEP
+	#undef WRITE_STEP
+	#undef READ_STEP
+}
+
+void get_shell_output( void )
+{
+	PBYTE	outbuf = NULL;
+	int		outlen;
+	int result;
+
+	result = shell_output( &outbuf, &outlen, NULL, 0, "ls", "-a", NULL );
+
+	if( outbuf && result == 0 )
+	{
+		printf("buf: %s len: %d-%d\n", (char *)outbuf, outlen, strlen( ( char *)outbuf ));
+	}
+}
+
 int main( int argc, char *argv[] )
 {
 	install_fault_handler( );
 
 	//get_passwd( );
-	get_param( argc, argv );
+	//get_param( argc, argv );
+	get_shell_output(  );
+
+
 
 	return 0;
 }
