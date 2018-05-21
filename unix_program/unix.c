@@ -10,6 +10,15 @@
 
 #include "common.h"
 
+#define ZERO_DATA( x )	memset( &( x ), 0, sizeof( x ) )
+
+typedef struct
+{
+	//char name[256];
+	const char *name;
+	int age;
+} Students;
+
 static inline int my_locase( char c )
 {
 	return c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c;
@@ -402,15 +411,66 @@ void get_shell_output( void )
 	}
 }
 
+void print_detail( Students *param )
+{
+	if( !param )
+	{
+		printf("invalied....\n");
+	}
+	else
+	{
+		printf("name :%s age: %d\n", param->name, param->age);
+	}
+	
+}
+
+void print_students_list( Students *data, int len )
+{
+	while( len-- )
+	{
+		print_detail( data );
+		data++;
+	}
+}
+
+void init_students( int len )
+{
+	int i;
+	Students *data = NULL;
+	if( !data && !( data = malloc( ( len) * sizeof( Students ) ) ) )
+	{
+		printf("Malloc failed!\n");
+	}
+
+	char *buf[ 5 ] = {"Stu1", "Stu2", "Stu3", "Stu4", "Stu5"};
+	for( i = 0; i < len; i++ )
+	{
+		ZERO_DATA( data[ i ] );		
+		
+		//方式一
+		char str[100];
+		snprintf( str, sizeof( str ), "Stu-%d", i );
+		data[i].name = str; //这是错误的赋值
+
+		//方式二
+		data[i].name = buf[i];
+
+		data[i].age = i + 10;
+	}
+
+	print_students_list( data, len );
+}
+
+
 int main( int argc, char *argv[] )
 {
 	install_fault_handler( );
 
 	//get_passwd( );
 	//get_param( argc, argv );
-	get_shell_output(  );
+	//get_shell_output(  );
 
-
+	//init_students( 5 );
 
 	return 0;
 }
