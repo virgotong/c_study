@@ -7,10 +7,20 @@
 // #include <pwd.h>
 // #include <shadow.h>
 // #include <sys/time.h>
+#include <netdb.h>
 
 #include "common.h"
 
 #define ZERO_DATA( x )	memset( &( x ), 0, sizeof( x ) )
+#define GET_TIMESTAMP( )	time( NULL )
+
+#define BLACK_LIST_FILE				"/home/learn/black_list.txt"
+#define ORI_BLACK_LIST_FILE			"/home/learn/c/unix_program/black_list.lst"
+#define BLACK_LIST_URL				"https://nssa.zxseccloud.com:28443/zxsas/static/template/black.txt"
+
+#define AVRO_FILE					"/home/learn/c/unix_program/avro-c.tar.gz"
+#define KAFKA_FILE					"/home/learn/c/unix_program/librdkafka-master.zip"
+
 
 typedef struct
 {
@@ -397,17 +407,118 @@ int shell_output( PBYTE *outbuf, int *outlen, PBYTE inbuf, int inlen, const char
 	#undef READ_STEP
 }
 
+void detach_console( void )
+{
+	int fd;
+
+	// close all open handles
+	for( fd = 0; fd < 65536; fd ++ )close( fd );
+
+	// reopen stdin, stdout and stderr
+	fd = open( "/dev/null", O_RDWR );
+	dup( fd );
+	dup( fd );
+	dup( fd );
+	chdir( "/" );
+}
+
+int shell_execute( PCSTR path, ... )
+{
+	#define EXEC_FLAGS_WAIT		1
+	#define EXEC_FLAGS_DETACH	2
+
+	int		result = -1, cid;
+	DWORD	flags = EXEC_FLAGS_WAIT | EXEC_FLAGS_DETACH;
+
+	// if the flags specified in the command line
+	if( *path == '&' )
+	{
+		flags &= ~EXEC_FLAGS_WAIT;
+		path ++;
+	}
+	if( *path == '@' )
+	{
+		flags &= ~EXEC_FLAGS_DETACH;
+		path ++;
+	}
+
+	// some cgi server do not set this, and we need it to
+	// execute the tools. note the 'overwrite' is '0'
+	setenv( "PATH", "/bin:/sbin:/usr/bin:/usr/sbin", 0 );
+	// must flush the cached data. otherwise the output before
+	// the fork would be flushed by both parent and the child
+	fflush( NULL );
+
+	cid = fork( );
+	if( cid == 0 )
+	{
+		va_list	ap;
+		int		argc;
+		PCSTR	argv[ MAX_EXECUTE_ARGS_SIZE ];
+
+		// the child should not output into the parent's console
+		if( flags & EXEC_FLAGS_DETACH )detach_console( );
+
+		// parse and generate the argument array
+		va_start( ap, path );
+
+		argv[ 0 ] = path;
+		for( argc = 1; argc < MAX_EXECUTE_ARGS_SIZE - 1; argc ++ )
+		{
+			argv[ argc ] = va_arg( ap, PCSTR );
+			if( ! argv[ argc ] )break;
+		}
+
+		argv[ argc ] = NULL;
+		va_end( ap );
+
+		// execute the command
+		result = execvp( path, ( char * const * )argv );		
+
+		// and exit
+		exit( result );
+	}
+	else if( cid > 0 )
+	{
+		// parent waits for the result
+		if( flags & EXEC_FLAGS_WAIT )
+		{
+			if( waitpid( cid, &result, 0 ) < 0 )result = -1;
+		}
+		else result = 0;
+	}
+	
+	return result;
+}
+
+void print( void *data )
+{
+	PCSTR buf = ( PCSTR )data;
+	printf("buf: %s\n", buf);
+}
+
 void get_shell_output( void )
 {
 	PBYTE	outbuf = NULL;
 	int		outlen;
 	int result;
 
-	result = shell_output( &outbuf, &outlen, NULL, 0, "ls", "-a", NULL );
+	#define URL	"http://192.168.33.251:4567/zxsas/static/template/black.txt"
 
-	if( outbuf && result == 0 )
+	//result = shell_output( &outbuf, &outlen, NULL, 0, "ls", "-a", NULL );
+	//result = shell_output( &outbuf, &outlen, NULL, 0, "wget", "-O", "black_list.txt", URL, NULL );	
+	result = shell_output( &outbuf, &outlen, NULL, 0, "uname", "-a", NULL );
+
+
+	if( outbuf && outlen > 0 )
 	{
-		printf("buf: %s len: %d-%d\n", (char *)outbuf, outlen, strlen( ( char *)outbuf ));
+		print( outbuf );
+	}
+
+	if( outbuf )
+	{
+		printf("*****\n");
+		free( outbuf );
 	}
 }
 
@@ -461,6 +572,131 @@ void init_students( int len )
 	print_students_list( data, len );
 }
 
+/**
+ *struct tm
+ {
+	int tm_sec; 代表目前秒数，正常范围为0-59，但允许至61秒 
+	int tm_min; 代表目前分数，范围0-59
+	int tm_hour; 从午夜算起的时数，范围为0-23
+	int tm_mday; 目前月份的日数，范围1-31
+	int tm_mon; 代表目前月份，从一月算起，范围从0-11
+	int tm_year; 从1900 年算起至今的年数,其值等于实际年份减去1900
+	int tm_wday; 一星期的日数，从星期一算起，范围为0-6 ,其中0代表星期天，1代表星期一，以此类推
+	int tm_yday; 从今年1月1日算起至今的天数，范围为0-365
+	int tm_isdst; 日光节约时间的旗标,实行夏令时的时候，tm_isdst为正,不实行夏令时的时候，
+	                tm_isdst为0，不了解情况时，tm_isdst()为负。
+ }
+ */
+void get_time_format( void )
+{
+	#define FIELD_OFFSET( type, field )		( ( UINT )( UINT )&( ( ( type * )0 )->field ) ) //获取该变量在内存中的地址
+	#define TIME_VALUE( tv, idx )			( *( int * )( ( PBYTE )( tv ) + ( idx ) ) )
+
+	time_t ts = GET_TIMESTAMP( );	
+	struct tm tm = *localtime( &ts );
+
+	printf("%02x\n", FIELD_OFFSET( struct tm, tm_yday));
+
+	printf("sec_1: %d\n", tm.tm_yday);
+	printf("sec_2 : %d\n", TIME_VALUE( &tm, FIELD_OFFSET( struct tm, tm_min)));
+	#undef FIELD_OFFSET
+	#undef TIME_VALUE
+
+	return;
+}
+
+static inline void download_black_list( void )
+{
+	unlink( BLACK_LIST_FILE );
+	shell_execute("curl", "-k", "-s", "-o", BLACK_LIST_FILE, BLACK_LIST_URL, NULL );
+	shell_execute( "mv", BLACK_LIST_FILE, "/home/learn/black.txt", NULL );
+	printf("success\n");
+}
+
+void rename_file( void )
+{
+	struct stat 	stdata;
+	char temp[256];
+
+	download_black_list( );
+
+	if( ( stat( BLACK_LIST_FILE, &stdata ) == 0 ) && ( stdata.st_size > 0 ) )
+	{
+		snprintf( temp, sizeof( temp ), "%s.ori", ORI_BLACK_LIST_FILE );
+		unlink( temp );
+		rename( ORI_BLACK_LIST_FILE, temp );
+
+		shell_execute( "cp", BLACK_LIST_FILE, ORI_BLACK_LIST_FILE, NULL );
+	}
+	else
+	{
+		printf("Failed download black list file!\n");
+	}
+}
+
+void check_file_exists( void )
+{
+	/* Method-1 */
+	// FILE *fp;
+	
+	// if( ( fp = fopen( AVRO_FILE, "r" ) ) )
+	// {
+	// 	printf("success\n");
+	// }
+	// else
+	// {
+	// 	printf("error\n");
+	// }
+	// close( fp );
+
+	/* Method-2 */
+	// if( access( AVRO_FILE, F_OK ) == 0 )
+	// {
+	// 	printf("success\n");
+	// }
+	// else
+	// {
+	// 	printf("error: %s\n", strerror( errno ));
+	// }
+
+	/* Method-3 */
+	// struct stat  stdata;
+
+	// if( ( stat( KAFKA_FILE, &stdata ) == 0 ) && ( stdata.st_size > 0 ) )
+	// {
+	// 	printf("success\n");
+	// }
+	// else
+	// {
+	// 	printf("error: %s\n", strerror( errno ));
+	// }
+}
+
+// static const char *product = "product";
+// static const char *product_1 = "test";
+#define test( type )	\
+	do 						\
+	{						\
+		if( type == product )			\
+		{								\
+			printf("buf: %s\n", buf);	\
+		}								\
+		else							\
+		{								\
+			printf("buf: %s\n", sbuf);	\
+			buf++;						\
+		}								\
+	}while(0);							
+
+void wait_childs( void )
+{
+	pid_t	pid;
+	int		stat;
+
+	while( ( pid = waitpid( -1, &stat, WNOHANG ) ) > 0 );	
+
+}
+
 
 int main( int argc, char *argv[] )
 {
@@ -471,6 +707,16 @@ int main( int argc, char *argv[] )
 	//get_shell_output(  );
 
 	//init_students( 5 );
+	//get_time_format( );
+	//rename_file( );	
+	//download_black_list( );
+	//check_file_exists( );
+	// const char *buf = "acnmoainca";
+	// const char *sbuf = "kioasncna";
+	// test( product );
+
+	shell_execute( "ls", "-l", NULL );
+
 
 	return 0;
 }

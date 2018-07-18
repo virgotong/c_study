@@ -1,5 +1,4 @@
-#OBJECTS := code hash msgsend msgrecive unix server client
-OBJECTS := unix
+OBJECTS := client pcap
 
 .PHONY : all
 
@@ -16,4 +15,4 @@ all:
 clean :
 	rm -f *.o
 	rm -f *.d
-	rm -f code hash msgrecive msgsend unix server client
+	rm -f client pcap

@@ -79,6 +79,7 @@ typedef const char *	PCSTR;
 typedef char *			PSTR;
 typedef unsigned int 	UINT;
 typedef unsigned char 	BOOL;
+typedef UINT										DWORD, *PDWORD;
 
 #define MAX_TRACE_SIZE			32
 #define MAX_EXECUTE_ARGS_SIZE	0x100

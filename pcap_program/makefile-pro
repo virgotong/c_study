@@ -1,0 +1,13 @@
+ifeq ($(object_type), client)
+ client: client.o
+	gcc -Wall -O3 client.o -o client -g
+ client.o: client.c
+	gcc -Wall -O3 -c client.c
+endif
+
+ifeq ($(object_type), pcap)
+ pcap: pcap_1.o
+	gcc -Wall -O3 pcap_1.o -o pcap -g -lpcap
+ pcap_1.o: pcap_1.c
+	gcc -Wall -O3 -c pcap_1.c -lpcap
+endif
