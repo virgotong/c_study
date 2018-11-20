@@ -1,0 +1,29 @@
+index = 1
+name = SMTP
+desc = smtp
+Protocol = TCP
+sequential = 1
+nocase = 1
+dir = 1
+pattern = \p0000HELO\x20
+pattern = \p0000EHLO\x20
+
+index = 2
+name = POP3
+desc = pop3
+Protocol = TCP
+sequential = 1
+nocase = 1
+dir = 2
+pattern = \p0000+OK\x20
+pattern = \p0000-ERR\x20
+
+index = 3
+name = IMAP
+desc = imap
+Protocol = TCP
+sequential = 1
+nocase = 1
+dir = 1
+pattern = \p0000C\x31\x20LOGIN\x20
+pattern = \p0000\x31\x20capability\x0d\x0a

@@ -1,0 +1,2 @@
+2018-11-22 14:56:00 116.430 ( pid 22596 ) :  file: unix.c line: 1092 command: 0x000001c7 status: 0x00000334
+2018-11-22 15:00:38 816.735 ( pid 22622 ) :  function: main line: 1092 command: 0x000001c7 status: 0x00000334

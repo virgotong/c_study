@@ -7,27 +7,81 @@
 // #include <pwd.h>
 // #include <shadow.h>
 // #include <sys/time.h>
-#include <netdb.h>
 
 #include "common.h"
 
 #define ZERO_DATA( x )	memset( &( x ), 0, sizeof( x ) )
-#define GET_TIMESTAMP( )	time( NULL )
+#define ARRAY_SIZE( x ) ( sizeof( x) / sizeof( x)[0] )
 
-#define BLACK_LIST_FILE				"/home/learn/black_list.txt"
-#define ORI_BLACK_LIST_FILE			"/home/learn/c/unix_program/black_list.lst"
-#define BLACK_LIST_URL				"https://nssa.zxseccloud.com:28443/zxsas/static/template/black.txt"
+#define MAX_STRING_LENGTH		0xFF
+typedef char 	String[ MAX_STRING_LENGTH + 1 ];
 
-#define AVRO_FILE					"/home/learn/c/unix_program/avro-c.tar.gz"
-#define KAFKA_FILE					"/home/learn/c/unix_program/librdkafka-master.zip"
+#define MAX_LSTRING_LENGTH		0xFFF
+typedef char	LString[ MAX_LSTRING_LENGTH + 1 ];
 
+#define MAIL_SCAN_DIR			"/var/mail_scan/fileoutdir"
 
 typedef struct
 {
 	//char name[256];
-	const char *name;
+	char *name;
 	int age;
-} Students;
+} Students, *PStudents;
+
+void __dbgprint( PCSTR fname, PCSTR format, ... )
+{
+	FILE			*fp;
+	va_list			arg;
+	struct stat		stbuf;
+	struct timeval	tv;
+	struct tm		*tmval;
+	PSTR			pos, nextpos;
+	String			temp;
+	LString			buffer;
+
+	// truncate the log file if too large
+	if( stat( fname, &stbuf ) >= 0 &&
+		stbuf.st_size > 0x100000 )
+	{
+		sprintf( temp, "%s.0", fname );
+		unlink( temp );
+		rename( fname, temp );
+	}
+
+	// format message to buffer
+	va_start( arg, format );
+	vsnprintf( buffer, sizeof( buffer ), format, arg );
+	va_end( arg );
+
+	// iutput formatted message
+	if( ( fp = fopen( fname, "a" ) ) )
+	{
+		gettimeofday( &tv, NULL );
+		tmval = localtime( ( time_t * )&tv.tv_sec );
+		sprintf( temp, "%04d-%02d-%02d %02d:%02d:%02d %03d.%03d ( pid %d ) : ",
+			tmval->tm_year + 1900, tmval->tm_mon + 1, tmval->tm_mday,
+			tmval->tm_hour, tmval->tm_min, tmval->tm_sec,
+			( int )tv.tv_usec / 1000, ( int )tv.tv_usec % 1000, getpid( ) );
+
+		for( pos = buffer; pos && *pos; pos = nextpos )
+		{
+			nextpos = strchr( pos, '\n' );
+			if( nextpos )*nextpos ++ = 0;
+
+			fprintf( fp, "%s %s\n", temp, pos );
+		}
+
+		fclose( fp );
+	}
+}
+
+static inline struct tm * my_localtime( time_t *ts )
+{
+	static struct tm zero_tmval = { 0 };
+	struct tm *tmval = localtime( ts );
+	if( ! tmval )tmval = &zero_tmval;
+	return tmval;
+}
 
 static inline int my_locase( char c )
 {
@@ -45,6 +99,122 @@ static inline int my_stricmp( const char *a, const char *b )
 	}
 
 	return ( int )( la - lb );
+}
+
+static inline BOOL my_is_space( int c )
+{
+	return c > 0 && c <= 0x20;
+}
+
+static int trim_spaces( PSTR string )
+{
+	PSTR pos, pos_str;
+
+	pos = pos_str = string;
+
+	// find the start position of the characters
+	while( my_is_space( *pos ) )pos ++;
+
+	// move the characters to the start if needed
+	if( pos != pos_str )
+		while( *pos )*pos_str ++ = *pos ++;
+	else
+		while( *pos_str )pos_str ++;
+
+	// cut the spaces at end of the string
+	while( pos_str > string && my_is_space( pos_str[ -1 ] ) )pos_str --;
+	if( *pos_str )*pos_str = 0;
+
+	return ( int )( pos_str - string );
+}
+
+static  UINT vread_strings( PCSTR source, PCSTR format, UINT strsize, ... )
+{
+	BOOL		greedy = FALSE, empty = TRUE;
+	int			skip = 0;
+	UINT		pos, count = 0;
+	PSTR		target;
+	va_list		marker;
+
+	// initialize
+	va_start( marker, strsize );
+
+	// check for greedy matching
+	if( *format == 'g' && format[ 1 ] == '/' )
+	{
+		greedy = TRUE;
+		format += 2;
+	}
+
+	// Read according to the 'format'
+	while( *format )
+	{
+		if( *format == '%' )						// Special token
+		{
+			do {
+				target = va_arg( marker, PSTR );
+				if( ! target )break;
+				*target = 0;
+
+			} while( skip -- > 0 );
+			if( ! target )break;
+
+			format ++;
+			if( *format == '\\' )format ++;
+
+			// Read one string into buffer
+			while( my_is_space( *source ) )source ++;
+
+			for( pos = 0; pos < strsize && *source; )
+			{
+				if( *format == ' ' && my_is_space( *source ) )break;
+				if( greedy )
+				{
+					PCSTR	nextfmt;
+
+					for( nextfmt = format, skip = 0; *nextfmt; nextfmt ++ )
+						if( *nextfmt == '%' )
+						{
+							skip ++;
+						}
+						else
+						{
+							if( *nextfmt == '\\' )nextfmt ++;
+							if( *nextfmt == *source )break;
+						}
+
+					if( *nextfmt == *source )format = nextfmt;
+				}
+				if( *format == *source )break;
+				target[ pos ++ ] = *source ++;
+			}
+			target[ pos ] = 0;
+			trim_spaces( target );
+
+			// read enough strings, break out
+			if( *target )empty = FALSE;
+			count ++;
+			continue;
+		}
+		else if( *format == ' ' )
+		{
+			while( my_is_space( *source ) )source ++;
+			format ++;
+			continue;
+		}
+		else if( *format == '\\' )
+		{
+			format ++;
+		}
+
+		// Match other characters
+		if( *source != *format )break;
+		source ++;
+		format ++;
+	}
+
+	va_end( marker );
+	return empty ? 0 : count;
 }
 
 void display_trace( void )
@@ -407,119 +577,76 @@ int shell_output( PBYTE *outbuf, int *outlen, PBYTE inbuf, int inlen, const char
 	#undef READ_STEP
 }
 
-void detach_console( void )
+/* 
+	ip.cn
+	ipinfo.io
+	ifconfig.me
+	http://members.3322.org/dyndns/getip
+*/
+static void  get_public_ip( void )
 {
-	int fd;
+	PBYTE	 outbuf = NULL;
+	int 	 outlen;
+	#if 0
+	shell_output( &outbuf, &outlen, NULL, 0, "curl", "-s", "http://members.3322.org/dyndns/getip", NULL );
+	#endif
 
-	// close all open handles
-	for( fd = 0; fd < 65536; fd ++ )close( fd );
 
-	// reopen stdin, stdout and stderr
-	fd = open( "/dev/null", O_RDWR );
-	dup( fd );
-	dup( fd );
-	dup( fd );
-	chdir( "/" );
-}
-
-int shell_execute( PCSTR path, ... )
-{
-	#define EXEC_FLAGS_WAIT		1
-	#define EXEC_FLAGS_DETACH	2
-
-	int		result = -1, cid;
-	DWORD	flags = EXEC_FLAGS_WAIT | EXEC_FLAGS_DETACH;
-
-	// if the flags specified in the command line
-	if( *path == '&' )
-	{
-		flags &= ~EXEC_FLAGS_WAIT;
-		path ++;
-	}
-	if( *path == '@' )
-	{
-		flags &= ~EXEC_FLAGS_DETACH;
-		path ++;
-	}
-
-	// some cgi server do not set this, and we need it to
-	// execute the tools. note the 'overwrite' is '0'
-	setenv( "PATH", "/bin:/sbin:/usr/bin:/usr/sbin", 0 );
-	// must flush the cached data. otherwise the output before
-	// the fork would be flushed by both parent and the child
-	fflush( NULL );
-
-	cid = fork( );
-	if( cid == 0 )
-	{
-		va_list	ap;
-		int		argc;
-		PCSTR	argv[ MAX_EXECUTE_ARGS_SIZE ];
-
-		// the child should not output into the parent's console
-		if( flags & EXEC_FLAGS_DETACH )detach_console( );
-
-		// parse and generate the argument array
-		va_start( ap, path );
-
-		argv[ 0 ] = path;
-		for( argc = 1; argc < MAX_EXECUTE_ARGS_SIZE - 1; argc ++ )
-		{
-			argv[ argc ] = va_arg( ap, PCSTR );
-			if( ! argv[ argc ] )break;
-		}
-
-		argv[ argc ] = NULL;
-		va_end( ap );
-
-		// execute the command
-		result = execvp( path, ( char * const * )argv );		
-
-		// and exit
-		exit( result );
-	}
-	else if( cid > 0 )
-	{
-		// parent waits for the result
-		if( flags & EXEC_FLAGS_WAIT )
-		{
-			if( waitpid( cid, &result, 0 ) < 0 )result = -1;
-		}
-		else result = 0;
-	}
-	
-	return result;
-}
-
-void print( void *data )
-{
-	PCSTR buf = ( PCSTR )data;
-	printf("buf: %s\n", buf);
-}
-
-void get_shell_output( void )
-{
-	PBYTE	outbuf = NULL;
-	int		outlen;
-	int result;
-
-	#define URL	"http://192.168.33.251:4567/zxsas/static/template/black.txt"
-
-	//result = shell_output( &outbuf, &outlen, NULL, 0, "ls", "-a", NULL );
-	//result = shell_output( &outbuf, &outlen, NULL, 0, "wget", "-O", "black_list.txt", URL, NULL );	
-	result = shell_output( &outbuf, &outlen, NULL, 0, "uname", "-a", NULL );
-
+	shell_output( &outbuf, &outlen, NULL, 0, "curl", "-s", "ifconfig.me/ip", NULL );
 
 	if( outbuf && outlen > 0 )
 	{
-		print( outbuf );
+		printf("public ip: %s len: %d\n", ( char * )outbuf, outlen );
 	}
+	else
+	{
+		printf("curl http://members.3322.org/dyndns/getip failed!\n");
+	}
+}
+
+
+static char *get_shell_output( char **buf )
+{
+	PBYTE	outbuf = NULL;
+	int	    outlen;
+	char *serial = "etaslxcna1q8y821#499as&^5acn";
+	static char client_id[128] = "";
+	char address[32]= "";
+
+	strcpy( client_id, serial);
+
+	#if 0
+	shell_output( &outbuf, &outlen, NULL, 0, "uname", "-a", NULL );
+	#endif	
+
+	#if 1
+	shell_output( &outbuf, &outlen, NULL, 0, "curl", "-s", "ip.cn", NULL );	
+	#endif
+
+	if( outbuf && outlen > 0 )
+	{			
+		char *pos = NULL;		
+		#if 1
+		if( ( pos = strstr( ( char *)outbuf, "IP：" ) ) )
+		{			
+			pos += strlen( "IP：" );
+			snprintf( address, sizeof( address ), "--%.*s", 15, pos );				
+		}
+		#endif		
+	}
+
+	printf("address: %s\n", address);
+	strcat( client_id, address );
 
 	if( outbuf )
 	{
-		printf("*****\n");
 		free( outbuf );
 	}
+
+	//strcpy( buf, client_id );
+	*buf = client_id;
+
+	return client_id;
 }
 
 void print_detail( Students *param )
@@ -544,6 +671,42 @@ void print_students_list( Students *data, int len )
 	}
 }
 
+void *read_students( void *params )
+{
+	return NULL;
+}
+
+void pthread_deal_students( PStudents data )
+{
+	if( !data )
+	{
+		printf("No data input...\n");
+		return;
+	}
+
+	int itr;
+	int len = 2;
+	pthread_t thread[ len ];
+
+	for( itr = 0; itr < len; itr++ )
+	{
+		if( pthread_create( &thread[ itr ], NULL, read_students, ( void *)data ) != 0 )
+		{
+			printf("Failed to create thread[ %d ]\n", itr);
+		}
+	}
+
+	for( itr = 0; itr < len; itr++ )
+	{
+		if( pthread_join( thread[ itr ], NULL ) != 0 )
+		{
+			printf("Failed to finish thread[ %d ]\n", itr);
+		}
+	}
+
+	return;
+}
+
 void init_students( int len )
 {
 	int i;
@@ -559,144 +722,215 @@ void init_students( int len )
 		ZERO_DATA( data[ i ] );		
 		
 		//方式一
+		#if 0
 		char str[100];
-		snprintf( str, sizeof( str ), "Stu-%d", i );
-		data[i].name = str; //这是错误的赋值
-
+		snprintf( str, sizeof( str ), "Stu-%d", i );		
+		data[i].name = str; //这是错误的赋值, 这会导致name指针最后仅仅会指向str这片内存区域
+		printf("name: %s\n", data[i].name );
+		#endif
 		//方式二
 		data[i].name = buf[i];
 
 		data[i].age = i + 10;
 	}
 
-	print_students_list( data, len );
-}
-
-/**
- *struct tm
- {
-	int tm_sec; 代表目前秒数，正常范围为0-59，但允许至61秒 
-	int tm_min; 代表目前分数，范围0-59
-	int tm_hour; 从午夜算起的时数，范围为0-23
-	int tm_mday; 目前月份的日数，范围1-31
-	int tm_mon; 代表目前月份，从一月算起，范围从0-11
-	int tm_year; 从1900 年算起至今的年数,其值等于实际年份减去1900
-	int tm_wday; 一星期的日数，从星期一算起，范围为0-6 ,其中0代表星期天，1代表星期一，以此类推
-	int tm_yday; 从今年1月1日算起至今的天数，范围为0-365
-	int tm_isdst; 日光节约时间的旗标,实行夏令时的时候，tm_isdst为正,不实行夏令时的时候，
-	                tm_isdst为0，不了解情况时，tm_isdst()为负。
- }
- */
-void get_time_format( void )
-{
-	#define FIELD_OFFSET( type, field )		( ( UINT )( UINT )&( ( ( type * )0 )->field ) ) //获取该变量在内存中的地址
-	#define TIME_VALUE( tv, idx )			( *( int * )( ( PBYTE )( tv ) + ( idx ) ) )
-
-	time_t ts = GET_TIMESTAMP( );	
-	struct tm tm = *localtime( &ts );
-
-	printf("%02x\n", FIELD_OFFSET( struct tm, tm_yday));
-
-	printf("sec_1: %d\n", tm.tm_yday);
-	printf("sec_2 : %d\n", TIME_VALUE( &tm, FIELD_OFFSET( struct tm, tm_min)));
-	#undef FIELD_OFFSET
-	#undef TIME_VALUE
-
-	return;
-}
-
-static inline void download_black_list( void )
-{
-	unlink( BLACK_LIST_FILE );
-	shell_execute("curl", "-k", "-s", "-o", BLACK_LIST_FILE, BLACK_LIST_URL, NULL );
-	shell_execute( "mv", BLACK_LIST_FILE, "/home/learn/black.txt", NULL );
-	printf("success\n");
-}
-
-void rename_file( void )
-{
-	struct stat 	stdata;
-	char temp[256];
-
-	download_black_list( );
-
-	if( ( stat( BLACK_LIST_FILE, &stdata ) == 0 ) && ( stdata.st_size > 0 ) )
-	{
-		snprintf( temp, sizeof( temp ), "%s.ori", ORI_BLACK_LIST_FILE );
-		unlink( temp );
-		rename( ORI_BLACK_LIST_FILE, temp );
-
-		shell_execute( "cp", BLACK_LIST_FILE, ORI_BLACK_LIST_FILE, NULL );
-	}
-	else
-	{
-		printf("Failed download black list file!\n");
-	}
-}
-
-void check_file_exists( void )
-{
-	/* Method-1 */
-	// FILE *fp;
+	//print_students_list( data, len );
 	
-	// if( ( fp = fopen( AVRO_FILE, "r" ) ) )
-	// {
-	// 	printf("success\n");
-	// }
-	// else
-	// {
-	// 	printf("error\n");
-	// }
-	// close( fp );
-
-	/* Method-2 */
-	// if( access( AVRO_FILE, F_OK ) == 0 )
-	// {
-	// 	printf("success\n");
-	// }
-	// else
-	// {
-	// 	printf("error: %s\n", strerror( errno ));
-	// }
-
-	/* Method-3 */
-	// struct stat  stdata;
-
-	// if( ( stat( KAFKA_FILE, &stdata ) == 0 ) && ( stdata.st_size > 0 ) )
-	// {
-	// 	printf("success\n");
-	// }
-	// else
-	// {
-	// 	printf("error: %s\n", strerror( errno ));
-	// }
+	pthread_deal_students( data );
 }
 
-// static const char *product = "product";
-// static const char *product_1 = "test";
-#define test( type )	\
-	do 						\
-	{						\
-		if( type == product )			\
-		{								\
-			printf("buf: %s\n", buf);	\
-		}								\
-		else							\
-		{								\
-			printf("buf: %s\n", sbuf);	\
-			buf++;						\
-		}								\
-	}while(0);							
-
-void wait_childs( void )
+#if 0 
+static const char *		G_netdev_patterns[] = { "xgbe%d", "gbe%d", "eth%d" };
+char G_netdev_names[ ARRAY_SIZE( G_netdev_patterns ) ][ 32 ][ IFNAMSIZ ];
+void load_netdev_info( )
 {
-	pid_t	pid;
-	int		stat;
+	int			itr, index;	
+	FILE		*fp;
+	char line[ 256 ];
+	char str[256];
 
-	while( ( pid = waitpid( -1, &stat, WNOHANG ) ) > 0 );	
+	if( ( fp = fopen( "/proc/net/dev", "r" ) ) )
+	{
+		while( ! feof( fp ) )
+		{
+			if( fgets( line, sizeof( line ), fp ) )
+			{				
+				char *pos;
 
+				pos = strchr( line, ':' );
+				if( pos )*pos = 0;				
+				pos = strchr( line, '.' );
+				if( pos )*pos = 0;				
+				trim_spaces( line );
+				#if 0
+				for( itr = 0; itr < ARRAY_SIZE( G_netdev_names ); itr ++ )
+					if( sscanf( line, G_netdev_patterns[ itr ], &index ) == 1 &&
+						index >= 0 && index < ARRAY_SIZE( G_netdev_names[ itr ] ) )
+						SAFE_COPY( G_netdev_names[ itr ][ index ], line );
+				#endif
+			}
+		}
+
+		fclose( fp );
+	}
+}
+#endif
+
+static inline const char *conver_to_str( unsigned long long int data )
+{
+	static char buf[ 256 ];
+	printf("before: %s\n", buf);
+	
+	snprintf( buf, sizeof( buf ), "%llu", data );
+	
+	printf("after: %s\n", buf);
+	return buf;
 }
 
+#if 0
+//pthread_barrier_t b;
+
+void* task(void* param) {
+    // int id = (int) param;
+    // printf("before the barrier %d\n", id);
+    // pthread_barrier_wait(&b);
+    // printf("after the barrier %d\n", id);
+    printf("child thread...\n");
+    return NULL;
+}
+
+void test_pthread( void )
+{
+
+	pthread_t thread;
+	pthread_create( &thread, NULL, task, NULL );
+	sleep( 2 );
+	pthread_join( thread, NULL );
+}
+
+
+void test_pthread( void )
+{
+	int nThread = 5;
+    int i;
+ 
+    pthread_t thread[nThread];
+    //pthread_barrier_init(&b, 0, nThread);
+    for (i = 0; i < nThread; i++)
+        pthread_create(&thread[i], 0, task, (void*)i);
+    for (i = 0; i < nThread; i++)
+        pthread_join(thread[i], 0);
+    //pthread_barrier_destroy(&b);
+
+}
+#endif
+
+#if 1
+//index_dstip_srcip_dstport_srcport_count_time__.eml
+static void print_eml_detail( const char *filename )
+{
+	PCSTR 	start, head, pos;
+	String 	segment, srcip, dstip, protocol, time;
+	int 	i, name_len, proto, srcport, dstport;
+
+	ZERO_DATA( segment );
+	ZERO_DATA( srcip );
+	ZERO_DATA( dstip );
+	ZERO_DATA( protocol );
+	ZERO_DATA( time );
+	i = name_len = proto = srcport = dstport = 0;
+	start = filename + strlen( MAIL_SCAN_DIR );
+
+	for( head = start + 1, pos = NULL; head <= filename + 512; head = pos +1 )
+	{
+		name_len = 0;
+		pos = strchr( head, '_' );
+
+		printf( "pos: %s\n", pos);
+
+		if( !pos )
+		{
+			pos = filename + 512;
+			name_len = pos - head + 1;
+		}
+		else
+		{
+			name_len  = pos - head;
+		}
+
+		if( ( name_len <= 0) || ( name_len >= MAX_STRING_LENGTH ) ) break;
+
+		switch( i++ )
+		{
+			case 0:
+				{
+					snprintf( segment, MAX_STRING_LENGTH, "%.*s", name_len, head );
+					proto = atoi( segment );
+				}
+				break;
+
+			case 1:
+				{
+					snprintf( dstip, MAX_STRING_LENGTH, "%.*s", name_len, head );
+				}
+				break;
+
+			case 2:
+				{
+					snprintf( srcip, MAX_STRING_LENGTH, "%.*s", name_len, head );	
+				}
+				break;
+
+			case 3:
+				{
+					snprintf( segment, MAX_STRING_LENGTH, "%.*s", name_len, head );
+					dstport = atoi( segment );
+				}
+				break;
+
+			case 4:
+				{
+					snprintf( segment, MAX_STRING_LENGTH, "%.*s", name_len, head );
+					srcport = atoi( segment );	
+				}
+				break;
+
+			case 6:
+				{
+					snprintf( time, MAX_STRING_LENGTH, "%.*s", name_len, head );
+					time_t start_ts = strtoul( time, NULL, 0 );
+					strftime( time, sizeof( time ), "%F %T", my_localtime( &start_ts ) );
+				}
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	switch( proto )
+	{
+		case 1:
+			strcpy( protocol, "smtp" );
+			break;
+
+		case 2:
+			strcpy( protocol, "pop3" );
+			break;
+
+		case 3:
+			strcpy( protocol, "imap" );
+			break;
+
+		default:
+			strcpy( protocol, "unknown" );
+			break;
+	}
+
+	printf( "protocol: %s srcip: %s dstip: %s srcport: %d dstport: %d time: %s\n", protocol, srcip, dstip, srcport, dstport, time );
+}
+
+#endif
 
 int main( int argc, char *argv[] )
 {
@@ -704,19 +938,189 @@ int main( int argc, char *argv[] )
 
 	//get_passwd( );
 	//get_param( argc, argv );
-	//get_shell_output(  );
+	
+	#if 0
+	char *buf = NULL;
+	get_shell_output( &buf );
+	printf("buf: %s\n", buf);
+	#endif
+
+	#if 0
+	//char *client_id = NULL;
+	char client_id[128];	
+	strcpy( client_id, get_shell_output() );
+	//client_id = get_shell_output( );
+	printf("client_id: %s\n", client_id);	
+	#endif
 
 	//init_students( 5 );
-	//get_time_format( );
-	//rename_file( );	
-	//download_black_list( );
-	//check_file_exists( );
-	// const char *buf = "acnmoainca";
-	// const char *sbuf = "kioasncna";
-	// test( product );
+	
+	#if 0
+	int i;
+	for( i = 0; i < 2; i++ )
+	{
+		fork();
+		printf( "*" );
+	}
+	#endif
 
-	shell_execute( "ls", "-l", NULL );
+	#if 0
+	char *str = ( char *)malloc( 10 * sizeof( char ));
+	memset( &str, 0, strlen( str ) );
 
+	char *p = str;
+
+	memcpy( str, "test", 4 );
+
+	*str++ = 0; //此时内存之乡的位置已经发生变化，所以后面free的时候会报错	
+	printf( "str: %s\n", str );
+
+	if( p )
+	{
+		free( p );
+		printf( "free success!\n" );
+	}
+	#endif
+
+	#if 0
+		PStudents params;
+		int index;
+		params = ( PStudents )malloc( 10 * sizeof( Students ) );
+		
+		if( params )
+		{
+			free( params );
+			printf("free success!\n");
+		}
+	#endif
+
+	#if 0
+	//load_netdev_info( );
+	#endif		
+
+	#if 0
+	int num[ 4 ] = {254, 15644, 56465, 56454 };
+	int itr;
+
+	for( itr = 0; itr < 4; itr++ )
+	{
+		conver_to_str( num[ itr ] );
+	}
+	#endif
+
+	#if 0
+		test_pthread( );
+	#endif
+
+	#if 0
+		char *str = "^defg$";
+		char buf[256];
+		unsigned char sig;
+		int id;
+		sscanf("1:/abc/i", "%d%*2c%[^/]/%c", &id, buf, &sig);
+		printf("id: %d buf: %s sig: %c\n", id, buf, sig);
+		printf("len: %d\n", strlen( str ) );
+	#endif
+
+	#if 0
+		#define FLAG_0	0X0080
+		#define FLAG_1	0X0001
+		#define FLAG_3  0X0002
+		unsigned int flag = 0;
+		flag |= FLAG_0;
+		unsigned int key = 0;
+		key = flag & FLAG_0;
+		printf("key: %u - 0x%04x\n", key, key);
+	#endif
+
+	#if 0
+	const char *mail_name = "25_1.1.1.1_2.2.2.2_12365_143_12_1503302098__.eml";
+	String fname;
+	sprintf( fname, "%s/%s", MAIL_SCAN_DIR, mail_name);
+	print_eml_detail( fname );
+	#endif
+
+	#if 1
+	//get_public_ip( );
+	#endif
+
+	#if 0
+		char buffer[64] = "EPRT |1|132.235.1.2|6275|";
+		char *ip, *sport;
+		int port;
+
+		ip = buffer + 8;		
+		sport = strchr( ip + 1, '|' );
+		if( !sport ) printf("failed\n");
+
+		*sport = 0; // 将 '|'更改成\0
+		sport++;
+		printf("ip: %s sport: %s\n", ip, sport);
+		port = atoi( sport );
+
+		printf("port: %d\n", port );
+
+	#endif
+
+	#if 1
+		#define LOG_FILE						"./log.txt"
+		#define WRITE_LOG( fmt, ... )			__dbgprint( LOG_FILE, fmt, ## __VA_ARGS__ )
+
+		WORD  code = 0;
+		DWORD command = 0;
+		DWORD status = 0;		
+		BYTE buffer[64] = {0x00, 0x00, 0x34, 0x03, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc7, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+		PBYTE ptr = buffer;
+
+		code = *( ptr + 2 );
+		//code |= *( ptr + 3 ) << 8; 
+
+		command = *( ptr + 16 );		
+		command |= *( ptr + 17 ) << 8 ;
+		command |= *( ptr + 18 ) << 16;
+		command |= *( ptr + 19 ) << 24;
+
+		status = *( ptr );
+		status |= *( ptr + 1 ) << 8;
+		status |= *( ptr + 2 );
+		status |= *( ptr + 3 ) << 8;
+
+		// printf("code: 0x%04x\n", code);
+		// printf( "command: 0x%08x  status: 0x%08x\n", command, status );
+		// printf("command: %u\n status: %u\n\n", command, status);
+	
+		WRITE_LOG( "function: %s line: %d command: 0x%08x status: 0x%08x", __FUNCTION__, __LINE__, command, status );	
+
+		WORD data_offset = 0;
+		data_offset = status + 4;
+
+		printf("data_offset: %u\n", data_offset);
+
+
+		#if 0
+		unsigned int i, ip = 0;
+		int port;
+		const char *p = buffer;
+
+		for( i = 0; i < 4; i++ )
+		{
+			ip = ip * 256 + atoi( p );
+			printf("ip: %u\n", ip);
+			p = strchr( p, ',' );
+			if( !p ) printf("failed\n");;
+			p++;
+		}
+
+		port = atoi( p );
+		p = strchr( p, ',' );
+		if( !p )printf("failed\n");;
+		p++;
+		port = port * 256 + atoi( p );
+
+		printf("port: %d\n", port);
+	#endif
+
+	#endif
 
 	return 0;
 }

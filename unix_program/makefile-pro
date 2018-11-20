@@ -2,47 +2,58 @@ ifeq ($(object_type),code)
  code: code.o
 	gcc -Wall code.o -o code -g
  code.o: code.c code.h
-	gcc -Wall -Wno-unused-function -Wno-strict-aliasing -O3 -c code.c 
+	gcc -Wall -c code.c 
 endif
 
 ifeq ($(object_type),hash)
  hash: hash.o
 	gcc -Wall hash.o -o hash -g
  hash.o:	hash.c hash.h
-	gcc -Wall -Wno-unused-function -Wno-strict-aliasing -O3 -c hash.c
+	gcc -Wall -c hash.c
 endif
 
 ifeq ($(object_type),msgsend)
  msgsend: msgsnd.o
 	gcc -Wall msgsnd.o -o msgsend -g
  msgsnd.o: msgsnd.c
-	gcc -Wall -Wno-unused-function -Wno-strict-aliasing -O3 -c msgsnd.c
+	gcc -Wall -c msgsnd.c
 endif
 
 ifeq ($(object_type),msgrecive)
  msgrecive: msgrcv.o
 	gcc -Wall msgrcv.o -o msgrecive -g
  msgrcv.o: msgrcv.c
-	gcc -Wall -Wno-unused-function -Wno-strict-aliasing -O3 -c msgrcv.c
+	gcc -Wall -c msgrcv.c
 endif
 
 ifeq ($(object_type),unix)
  unix: unix.o
-	gcc -Wall unix.o -o unix -g
+	gcc -Wall unix.o -o unix -g -lpthread
  unix.o: unix.c common.h
-	gcc -Wall -Wno-unused-function -Wno-strict-aliasing -O3 -c unix.c
-endif
-
-ifeq ($(object_type),server)
- server: server_socket.o
-	gcc -Wall server_socket.o -o server -g
- server_socket.o: server_socket.c common.h
-	gcc -Wall -Wno-unused-function -Wno-strict-aliasing -O3 -c server_socket.c
+	gcc -Wall -c unix.c
 endif
 
 ifeq ($(object_type),client)
- client: client_socket.o
-	gcc -Wall client_socket.o -o client -g
- client_socket.o: client_socket.c common.h
-	gcc -Wall -Wno-unused-function -Wno-strict-aliasing -O3 -c client_socket.c
+ client: client.o
+	gcc -Wall client.o -o client -g
+ client.o: client.c
+	gcc -Wall -c client.c
 endif
+
+ifeq ($(object_type),server)
+ server: server.o
+	gcc -Wall server.o -o server -g
+ server.o: server.c
+	gcc -Wall -c server.c
+endif
+
+ifeq ($(object_type),my_thread)
+ my_thread: my_thread.o
+	gcc -Wall my_thread.o -o my_thread -g -lpthread
+ my_thread.o: my_thread.c common.h
+	gcc -Wall -c my_thread.c
+endif
+
+
+
+
